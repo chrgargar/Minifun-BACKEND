@@ -10,6 +10,7 @@ const logger = require('./logger');
 
 module.exports = {
   host: process.env.DB_HOST || 'localhost',
+  port: process.env.DB_PORT || 3306, // Puerto personalizado (ej: Aiven usa puertos no estándar)
   database: process.env.DB_NAME || 'minifun',
   username: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
@@ -19,6 +20,17 @@ module.exports = {
   logging: process.env.NODE_ENV === 'development'
     ? (msg) => logger.debug(`DB: ${msg}`)
     : false,
+
+  // Configuración SSL: requerido por servicios como Aiven, PlanetScale, etc.
+  // En desarrollo local sin SSL, esto se desactiva automáticamente
+  dialectOptions: {
+    ssl: process.env.NODE_ENV === 'production'
+      ? {
+          require: true,
+          rejectUnauthorized: true
+        }
+      : false
+  },
 
   // Pool de conexiones: reutiliza conexiones existentes en lugar de crear nuevas
   // Esto mejora el rendimiento y reduce la carga en el servidor MySQL
