@@ -3,6 +3,7 @@ const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
 const { successResponse, errorResponse } = require('../utils/responseUtils');
 const logger = require('../config/logger');
+const emailService = require('../services/emailService');
 
 /**
  * POST /auth/register
@@ -56,8 +57,29 @@ exports.register = async (req, res, next) => {
       email: email || null,
       password_hash: password,
       is_guest: false,
-      last_login: new Date()
+      last_login: new Date(),
+      email_verified: false
     });
+
+    // Si se proporcionó email, generar token de verificación y enviar correo
+    if (email) {
+      const verificationToken = user.generateVerificationToken();
+      await user.save();
+
+      const emailSent = await emailService.sendVerificationEmail(user, verificationToken);
+
+      if (emailSent) {
+        logger.auth('Email de verificación enviado', {
+          userId: user.id,
+          email: user.email
+        });
+      } else {
+        logger.warn('No se pudo enviar email de verificación', {
+          userId: user.id,
+          email: user.email
+        });
+      }
+    }
 
     logger.auth('Usuario registrado exitosamente', {
       userId: user.id,
@@ -81,12 +103,13 @@ exports.register = async (req, res, next) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        email_verified: user.email_verified,
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
       }
-    }, 'Usuario registrado exitosamente', 201);
+    }, email ? 'Usuario registrado. Verifica tu email para activar tu cuenta.' : 'Usuario registrado exitosamente', 201);
 
   } catch (error) {
     logger.error('Error en registro', { username, error: error.message });
@@ -165,6 +188,7 @@ exports.login = async (req, res, next) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        email_verified: user.email_verified,
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
@@ -196,6 +220,7 @@ exports.getMe = async (req, res, next) => {
         id: user.id,
         username: user.username,
         email: user.email,
+        email_verified: user.email_verified,
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
@@ -226,6 +251,126 @@ exports.logout = async (req, res, next) => {
 
     return successResponse(res, null, 'Logout exitoso');
   } catch (error) {
+    next(error);
+  }
+};
+
+/**
+ * GET /auth/verify-email/:token
+ * Verificar email del usuario con el token recibido por correo
+ */
+exports.verifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return errorResponse(res, 'Token de verificación requerido', 400);
+    }
+
+    logger.auth('Intento de verificación de email', { token: token.substring(0, 10) + '...', ip: req.ip });
+
+    // Buscar usuario por token de verificación
+    const user = await User.findOne({
+      where: { verification_token: token }
+    });
+
+    if (!user) {
+      logger.security('Token de verificación inválido', { token: token.substring(0, 10) + '...', ip: req.ip });
+      return errorResponse(res, 'Token de verificación inválido o expirado', 400);
+    }
+
+    // Verificar si el token es válido y no ha expirado
+    if (!user.isVerificationTokenValid(token)) {
+      logger.security('Token de verificación expirado', {
+        userId: user.id,
+        username: user.username,
+        ip: req.ip
+      });
+      return errorResponse(res, 'El token de verificación ha expirado. Solicita un nuevo correo de verificación.', 400);
+    }
+
+    // Verificar el email del usuario
+    user.email_verified = true;
+    user.verification_token = null;
+    user.verification_token_expires = null;
+    await user.save();
+
+    logger.auth('Email verificado exitosamente', {
+      userId: user.id,
+      username: user.username,
+      email: user.email,
+      ip: req.ip
+    });
+
+    return successResponse(res, {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified
+      }
+    }, 'Email verificado exitosamente. ¡Tu cuenta está activada!');
+
+  } catch (error) {
+    logger.error('Error en verificación de email', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * POST /auth/resend-verification
+ * Reenviar email de verificación
+ * Requiere autenticación JWT
+ */
+exports.resendVerification = async (req, res, next) => {
+  try {
+    // req.userId viene del middleware de autenticación
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    // Verificar si el usuario ya tiene email verificado
+    if (user.email_verified) {
+      return errorResponse(res, 'Tu email ya está verificado', 400);
+    }
+
+    // Verificar si el usuario tiene email registrado
+    if (!user.email) {
+      return errorResponse(res, 'No tienes un email registrado. Actualiza tu perfil primero.', 400);
+    }
+
+    logger.auth('Solicitud de reenvío de verificación', {
+      userId: user.id,
+      email: user.email,
+      ip: req.ip
+    });
+
+    // Generar nuevo token de verificación
+    const verificationToken = user.generateVerificationToken();
+    await user.save();
+
+    // Enviar email de verificación
+    const emailSent = await emailService.sendVerificationEmail(user, verificationToken);
+
+    if (!emailSent) {
+      logger.error('Error al enviar email de verificación', {
+        userId: user.id,
+        email: user.email
+      });
+      return errorResponse(res, 'No se pudo enviar el email de verificación. Inténtalo más tarde.', 500);
+    }
+
+    logger.auth('Email de verificación reenviado', {
+      userId: user.id,
+      email: user.email
+    });
+
+    return successResponse(res, null, 'Email de verificación enviado. Revisa tu bandeja de entrada.');
+
+  } catch (error) {
+    logger.error('Error al reenviar verificación', { error: error.message });
     next(error);
   }
 };

@@ -45,6 +45,19 @@ router.post(
   authController.login
 );
 
+/**
+ * GET /auth/verify-email/:token
+ * Verificar email con token recibido por correo
+ *
+ * Ruta pública (no requiere autenticación)
+ * Rate limit: 5 intentos por 15 minutos
+ */
+router.get(
+  '/verify-email/:token',
+  authLimiter,
+  authController.verifyEmail
+);
+
 // ==================== RUTAS PROTEGIDAS ====================
 
 /**
@@ -70,6 +83,20 @@ router.post(
   '/logout',
   authenticateToken,
   authController.logout
+);
+
+/**
+ * POST /auth/resend-verification
+ * Reenviar email de verificación
+ *
+ * Requiere: Token JWT válido en header Authorization
+ * Rate limit: 3 intentos por hora (reutiliza registerLimiter)
+ */
+router.post(
+  '/resend-verification',
+  authenticateToken,
+  registerLimiter, // Mismo límite que registro para prevenir spam
+  authController.resendVerification
 );
 
 module.exports = router;

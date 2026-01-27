@@ -11,6 +11,10 @@ const logger = require('./config/logger');
 
 const app = express();
 
+// Confiar en el proxy de Render para obtener la IP real del cliente
+// Necesario cuando se despliega detrás de un proxy reverso (Render, Heroku, etc.)
+app.set('trust proxy', 1);
+
 // ==================== MIDDLEWARES DE SEGURIDAD ====================
 
 // Helmet: protege contra vulnerabilidades web conocidas

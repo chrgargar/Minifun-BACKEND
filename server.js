@@ -4,6 +4,7 @@ const app = require('./src/app');
 const { syncDatabase } = require('./src/models');
 const logger = require('./src/config/logger');
 const { validateConfig } = require('./src/config/validateConfig');
+const emailService = require('./src/services/emailService');
 
 const PORT = process.env.PORT || 3000;
 
@@ -31,7 +32,16 @@ async function startServer() {
     logger.info('Conectando a base de datos...');
     await syncDatabase();
 
-    // 4. Iniciar servidor Express
+    // 4. Inicializar servicio de email
+    logger.info('Inicializando servicio de email...');
+    emailService.initialize();
+
+    // Verificar conexión con servidor SMTP (opcional, no bloqueante)
+    emailService.verifyConnection().catch(err => {
+      logger.warn('No se pudo verificar la conexión con el servidor SMTP', err);
+    });
+
+    // 5. Iniciar servidor Express
     app.listen(PORT, () => {
       logger.info('═══════════════════════════════════════════════════');
       logger.info(`🚀 Servidor MINIFUN corriendo en puerto ${PORT}`);

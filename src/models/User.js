@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 
 module.exports = (sequelize) => {
   const User = sequelize.define('User', {
@@ -48,6 +49,21 @@ module.exports = (sequelize) => {
       type: DataTypes.INTEGER,
       defaultValue: 0,
       field: 'streak_days'
+    },
+    email_verified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'email_verified'
+    },
+    verification_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'verification_token'
+    },
+    verification_token_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'verification_token_expires'
     }
   }, {
     tableName: 'users',
@@ -75,7 +91,26 @@ module.exports = (sequelize) => {
   User.prototype.toJSON = function() {
     const values = { ...this.get() };
     delete values.password_hash;
+    delete values.verification_token;
     return values;
+  };
+
+  // Método para generar token de verificación de email
+  User.prototype.generateVerificationToken = function() {
+    this.verification_token = crypto.randomBytes(32).toString('hex');
+    this.verification_token_expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+    return this.verification_token;
+  };
+
+  // Método para verificar si el token es válido
+  User.prototype.isVerificationTokenValid = function(token) {
+    if (!this.verification_token || !this.verification_token_expires) {
+      return false;
+    }
+    return (
+      this.verification_token === token &&
+      this.verification_token_expires > new Date()
+    );
   };
 
   return User;
