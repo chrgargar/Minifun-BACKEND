@@ -5,6 +5,7 @@ const { successResponse, errorResponse } = require('../utils/responseUtils');
 const logger = require('../config/logger');
 const emailService = require('../services/emailService');
 const { getVerificationSuccessPage, getVerificationErrorPage } = require('../templates/verificationPage');
+const { getPasswordResetFormPage, getPasswordResetSuccessPage, getPasswordResetErrorPage } = require('../templates/passwordResetPage');
 
 /**
  * POST /auth/register
@@ -380,5 +381,143 @@ exports.resendVerification = async (req, res, next) => {
   } catch (error) {
     logger.error('Error al reenviar verificación', { error: error.message });
     next(error);
+  }
+};
+
+/**
+ * POST /auth/forgot-password
+ * Solicitar restablecimiento de contraseña
+ * Envía un email con el enlace de reset
+ */
+exports.forgotPassword = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return errorResponse(res, 'El email es requerido', 400);
+    }
+
+    logger.auth('Solicitud de reset de contraseña', { email, ip: req.ip });
+
+    // Buscar usuario por email
+    const user = await User.findOne({ where: { email } });
+
+    // Por seguridad, siempre devolvemos el mismo mensaje
+    // aunque el email no exista (evita enumeración de usuarios)
+    if (!user) {
+      logger.security('Reset solicitado para email inexistente', { email, ip: req.ip });
+      return successResponse(res, null, 'Si el email existe, recibirás un enlace de recuperación');
+    }
+
+    // Generar token de reset
+    const resetToken = user.generatePasswordResetToken();
+    await user.save();
+
+    // Enviar email
+    const emailSent = await emailService.sendPasswordResetEmail(user, resetToken);
+
+    if (!emailSent) {
+      logger.error('Error al enviar email de reset', { userId: user.id, email: user.email });
+      return errorResponse(res, 'No se pudo enviar el email. Inténtalo más tarde.', 500);
+    }
+
+    logger.auth('Email de reset enviado', { userId: user.id, email: user.email });
+
+    return successResponse(res, null, 'Si el email existe, recibirás un enlace de recuperación');
+
+  } catch (error) {
+    logger.error('Error en forgot-password', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * GET /auth/reset-password/:token
+ * Mostrar formulario para nueva contraseña
+ */
+exports.showResetPasswordForm = async (req, res, next) => {
+  try {
+    const { token } = req.params;
+
+    if (!token) {
+      return res.status(400).send(getPasswordResetErrorPage('Token de reset requerido'));
+    }
+
+    // Verificar que el token existe y es válido
+    const user = await User.findOne({ where: { password_reset_token: token } });
+
+    if (!user) {
+      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación es inválido o ha expirado'));
+    }
+
+    if (!user.isPasswordResetTokenValid(token)) {
+      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación ha expirado. Solicita uno nuevo.'));
+    }
+
+    // Mostrar formulario
+    return res.status(200).send(getPasswordResetFormPage(token));
+
+  } catch (error) {
+    logger.error('Error mostrando formulario de reset', { error: error.message });
+    return res.status(500).send(getPasswordResetErrorPage('Ocurrió un error inesperado'));
+  }
+};
+
+/**
+ * POST /auth/reset-password
+ * Procesar el cambio de contraseña
+ */
+exports.resetPassword = async (req, res, next) => {
+  try {
+    const { token, password, confirmPassword } = req.body;
+
+    // Validaciones
+    if (!token) {
+      return res.status(400).send(getPasswordResetFormPage(token, 'Token de reset requerido'));
+    }
+
+    if (!password || !confirmPassword) {
+      return res.status(400).send(getPasswordResetFormPage(token, 'Todos los campos son requeridos'));
+    }
+
+    if (password !== confirmPassword) {
+      return res.status(400).send(getPasswordResetFormPage(token, 'Las contraseñas no coinciden'));
+    }
+
+    if (password.length < 6) {
+      return res.status(400).send(getPasswordResetFormPage(token, 'La contraseña debe tener al menos 6 caracteres'));
+    }
+
+    logger.auth('Intento de reset de contraseña', { token: token.substring(0, 10) + '...', ip: req.ip });
+
+    // Buscar usuario por token
+    const user = await User.findOne({ where: { password_reset_token: token } });
+
+    if (!user) {
+      logger.security('Token de reset inválido', { token: token.substring(0, 10) + '...', ip: req.ip });
+      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación es inválido o ha expirado'));
+    }
+
+    if (!user.isPasswordResetTokenValid(token)) {
+      logger.security('Token de reset expirado', { userId: user.id, ip: req.ip });
+      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación ha expirado. Solicita uno nuevo.'));
+    }
+
+    // Cambiar contraseña
+    await user.setPassword(password);
+    await user.save();
+
+    logger.auth('Contraseña cambiada exitosamente', {
+      userId: user.id,
+      username: user.username,
+      ip: req.ip
+    });
+
+    // Mostrar página de éxito
+    return res.status(200).send(getPasswordResetSuccessPage(user.username));
+
+  } catch (error) {
+    logger.error('Error en reset de contraseña', { error: error.message });
+    return res.status(500).send(getPasswordResetErrorPage('Ocurrió un error inesperado'));
   }
 };

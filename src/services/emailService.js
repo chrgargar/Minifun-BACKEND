@@ -1,6 +1,7 @@
 const { Resend } = require('resend');
 const logger = require('../config/logger');
 const { getVerificationEmailTemplate } = require('../templates/verificationEmail');
+const { getPasswordResetEmailTemplate, getPasswordResetPlainText } = require('../templates/passwordResetEmail');
 
 /**
  * Servicio de envío de emails usando Resend
@@ -144,16 +145,52 @@ Si no creaste una cuenta en MINIFUN, puedes ignorar este correo de forma segura.
   }
 
   /**
-   * Envía un email de restablecimiento de contraseña (para futuro uso)
+   * Envía un email de restablecimiento de contraseña
    *
    * @param {Object} user - Usuario al que se enviará el email
+   * @param {string} user.email - Email del usuario
+   * @param {string} user.username - Nombre de usuario
+   * @param {string} user.id - ID del usuario
    * @param {string} resetToken - Token de restablecimiento
    * @returns {Promise<boolean>} true si el email se envió correctamente
    */
   async sendPasswordResetEmail(user, resetToken) {
-    // TODO: Implementar cuando se añada funcionalidad de reset de contraseña
-    logger.info(`Funcionalidad de reset de contraseña pendiente de implementar para ${user.email}`);
-    return false;
+    if (!this.isConfigured) {
+      logger.warn(`No se pudo enviar email de reset a ${user.email}: Servicio no configurado`);
+      return false;
+    }
+
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const resetUrl = `${frontendUrl}/api/auth/reset-password/${resetToken}`;
+
+      const htmlContent = getPasswordResetEmailTemplate(user.username, resetUrl);
+      const textContent = getPasswordResetPlainText(user.username, resetUrl);
+
+      // Enviar email con Resend
+      const response = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
+        to: [user.email],
+        subject: '🔐 Recupera tu contraseña de MINIFUN',
+        html: htmlContent,
+        text: textContent,
+      });
+
+      // Resend retorna un objeto con id si fue exitoso
+      if (response.data && response.data.id) {
+        logger.info(`✅ Email de reset de contraseña enviado a ${user.email}`, {
+          emailId: response.data.id,
+          userId: user.id,
+        });
+        return true;
+      } else {
+        logger.error(`❌ Error al enviar email de reset a ${user.email}:`, response.error);
+        return false;
+      }
+    } catch (error) {
+      logger.error(`❌ Error al enviar email de reset a ${user.email}:`, error);
+      return false;
+    }
   }
 }
 

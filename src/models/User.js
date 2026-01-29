@@ -64,6 +64,16 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'verification_token_expires'
+    },
+    password_reset_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'password_reset_token'
+    },
+    password_reset_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'password_reset_expires'
     }
   }, {
     tableName: 'users',
@@ -111,6 +121,31 @@ module.exports = (sequelize) => {
       this.verification_token === token &&
       this.verification_token_expires > new Date()
     );
+  };
+
+  // Método para generar token de reset de contraseña
+  User.prototype.generatePasswordResetToken = function() {
+    this.password_reset_token = crypto.randomBytes(32).toString('hex');
+    this.password_reset_expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+    return this.password_reset_token;
+  };
+
+  // Método para verificar si el token de reset es válido
+  User.prototype.isPasswordResetTokenValid = function(token) {
+    if (!this.password_reset_token || !this.password_reset_expires) {
+      return false;
+    }
+    return (
+      this.password_reset_token === token &&
+      this.password_reset_expires > new Date()
+    );
+  };
+
+  // Método para cambiar la contraseña
+  User.prototype.setPassword = async function(newPassword) {
+    this.password_hash = await bcrypt.hash(newPassword, 10);
+    this.password_reset_token = null;
+    this.password_reset_expires = null;
   };
 
   return User;

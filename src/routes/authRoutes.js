@@ -58,6 +58,43 @@ router.get(
   authController.verifyEmail
 );
 
+/**
+ * POST /auth/forgot-password
+ * Solicitar restablecimiento de contraseña
+ *
+ * Envía un email con enlace de reset
+ * Rate limit: 3 intentos por hora
+ */
+router.post(
+  '/forgot-password',
+  registerLimiter, // Mismo límite que registro para prevenir spam
+  authController.forgotPassword
+);
+
+/**
+ * GET /auth/reset-password/:token
+ * Mostrar formulario para nueva contraseña
+ *
+ * Ruta pública
+ */
+router.get(
+  '/reset-password/:token',
+  authLimiter,
+  authController.showResetPasswordForm
+);
+
+/**
+ * POST /auth/reset-password
+ * Procesar el cambio de contraseña
+ *
+ * Ruta pública
+ */
+router.post(
+  '/reset-password',
+  authLimiter,
+  authController.resetPassword
+);
+
 // ==================== RUTAS PROTEGIDAS ====================
 
 /**
