@@ -84,7 +84,7 @@ class EmailService {
 
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
+      const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
       const htmlContent = getVerificationEmailTemplate(user.username, verificationUrl);
       const textContent = this._generatePlainTextVersion(user.username, verificationUrl);
