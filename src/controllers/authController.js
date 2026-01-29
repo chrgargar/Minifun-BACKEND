@@ -47,7 +47,19 @@ exports.register = async (req, res, next) => {
       });
 
       if (existingEmail) {
-        return errorResponse(res, 'El email ya está en uso', 409);
+        // Si el email existe pero NO está verificado, eliminar ese usuario
+        // para permitir que otro se registre con el mismo email
+        if (!existingEmail.email_verified) {
+          logger.auth('Eliminando usuario con email no verificado para permitir nuevo registro', {
+            oldUserId: existingEmail.id,
+            oldUsername: existingEmail.username,
+            email: email
+          });
+          await existingEmail.destroy();
+        } else {
+          // El email está verificado, no se puede usar
+          return errorResponse(res, 'El email ya está en uso', 409);
+        }
       }
     }
 
