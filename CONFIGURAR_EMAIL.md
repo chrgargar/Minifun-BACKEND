@@ -1,173 +1,142 @@
-# 📧 Configuración de Gmail para Verificación de Email
+# 📧 Configuración de Resend para Verificación de Email
 
-Esta guía te ayudará a configurar Gmail para enviar emails de verificación desde el backend de MINIFUN.
+Esta guía te ayudará a configurar Resend para enviar emails de verificación desde el backend de MINIFUN.
 
----
-
-## 📋 Requisitos
-
-- Una cuenta de Gmail
-- Verificación en 2 pasos activada en tu cuenta de Google
-
----
-
-## 🔧 Paso 1: Activar Verificación en 2 Pasos
-
-1. Ve a [Google Account Security](https://myaccount.google.com/security)
-2. En la sección "Cómo accedes a Google", haz clic en **"Verificación en 2 pasos"**
-3. Sigue los pasos para activarla (si no está activada)
+**¿Por qué Resend en lugar de Gmail?**
+- ✅ Funciona en Render (no usa SMTP bloqueado)
+- ✅ Configuración más simple (solo 1 API Key)
+- ✅ Mejor deliverability (no va a spam)
+- ✅ 100 emails/día gratis
+- ✅ No expones credenciales personales
 
 ---
 
-## 🔑 Paso 2: Generar App Password
+## 🚀 Paso 1: Crear Cuenta en Resend
 
-Una **App Password** es una contraseña de 16 caracteres que permite que aplicaciones externas (como nuestro backend) accedan a tu cuenta de Gmail de forma segura, sin usar tu contraseña real.
-
-### Instrucciones:
-
-1. Ve a [Google App Passwords](https://myaccount.google.com/apppasswords)
-   - O desde: Google Account > Security > 2-Step Verification > App passwords
-
-2. En "Select app", elige **"Mail"** o **"Other (Custom name)"**
-   - Si eliges "Other", pon un nombre como `MINIFUN Backend`
-
-3. En "Select device", elige **"Other (Custom name)"**
-   - Pon: `MINIFUN Backend Server`
-
-4. Haz clic en **"Generate"**
-
-5. Google te mostrará una contraseña de 16 caracteres como:
-   ```
-   abcd efgh ijkl mnop
-   ```
-
-6. **¡COPIA ESTA CONTRASEÑA!** (la usarás en el siguiente paso)
-   - No podrás volver a verla
-   - Si la pierdes, deberás generar una nueva
+1. Ve a [resend.com](https://resend.com)
+2. Haz clic en **"Sign Up"**
+3. Regístrate con tu email o GitHub
+4. Verifica tu email si te lo piden
 
 ---
 
-## ⚙️ Paso 3: Configurar Variables de Entorno
+## 🔑 Paso 2: Obtener API Key
 
-1. **Abre el archivo `.env`** en la raíz del proyecto backend:
+1. Una vez dentro del dashboard de Resend
+2. En el menú izquierdo, haz clic en **"API Keys"**
+3. Haz clic en **"Create API Key"**
+4. Dale un nombre: `MINIFUN Backend`
+5. Haz clic en **"Add"**
+6. **COPIA la API Key** que te muestra (empieza con `re_...`)
+
+**⚠️ MUY IMPORTANTE:**
+- La API Key solo se muestra una vez
+- Si la pierdes, tendrás que crear una nueva
+- Guárdala en un lugar seguro
+
+---
+
+## ⚙️ Paso 3: Configurar Variables de Entorno Localmente
+
+### Opción A: Si quieres probar localmente primero
+
+1. Abre el archivo `.env` en la raíz del proyecto backend:
    ```
    C:\Users\chrgargar4\Desktop\minifun-backend\.env
    ```
 
-2. **Agrega o actualiza estas variables:**
+2. Reemplaza `TU_API_KEY_AQUI` con tu API Key real:
    ```env
-   # Email Configuration
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=tu-correo@gmail.com
-   EMAIL_PASSWORD=abcd efgh ijkl mnop
-   EMAIL_FROM="MINIFUN" <tu-correo@gmail.com>
-   FRONTEND_URL=https://backend-minifun.onrender.com
+   RESEND_API_KEY=re_tu_api_key_real_aqui
+   EMAIL_FROM="MINIFUN <onboarding@resend.dev>"
+   FRONTEND_URL=http://localhost:3000
    ```
 
-3. **Reemplaza:**
-   - `tu-correo@gmail.com` → Tu dirección de Gmail real
-   - `abcd efgh ijkl mnop` → La App Password que generaste (puedes poner los espacios o quitarlos, ambos funcionan)
-   - `FRONTEND_URL` → La URL donde los usuarios harán clic para verificar su email
+3. Guarda el archivo
 
----
-
-## 🌐 Paso 4: Configurar FRONTEND_URL
-
-La variable `FRONTEND_URL` es la URL base donde los usuarios serán redirigidos al hacer clic en el enlace de verificación.
-
-### Opciones:
-
-#### A) Desarrollo Local (Para probar en tu computadora)
-```env
-FRONTEND_URL=http://localhost:3000
-```
-
-#### B) Producción (Backend en Render)
-```env
-FRONTEND_URL=https://backend-minifun.onrender.com
-```
-
-**Nota:** Por ahora, el enlace apuntará a tu backend. En el futuro, cuando tengas un frontend web, deberás cambiar esta URL.
-
----
-
-## 🚀 Paso 5: Desplegar a Render
-
-Si estás usando Render para el backend en producción:
-
-1. Ve a tu proyecto en [Render Dashboard](https://dashboard.render.com/)
-
-2. En **Environment**, agrega estas variables:
-   ```
-   EMAIL_HOST=smtp.gmail.com
-   EMAIL_PORT=587
-   EMAIL_USER=tu-correo@gmail.com
-   EMAIL_PASSWORD=abcd efgh ijkl mnop
-   EMAIL_FROM="MINIFUN" <tu-correo@gmail.com>
-   FRONTEND_URL=https://backend-minifun.onrender.com
-   ```
-
-3. Guarda los cambios y **redeploy** el backend
-
----
-
-## 📧 Paso 6: Probar el Envío de Emails
-
-### Desde el Backend Local:
-
-1. **Inicia el servidor:**
+4. Reinicia el servidor:
    ```bash
-   cd C:\Users\chrgargar4\Desktop\minifun-backend
    npm start
    ```
 
-2. **Registra un usuario con email:**
-   ```bash
-   curl -X POST http://localhost:3000/api/auth/register \
-     -H "Content-Type: application/json" \
-     -d '{
-       "username": "testuser",
-       "email": "tu-email-prueba@gmail.com",
-       "password": "password123"
-     }'
+5. Deberías ver en los logs:
+   ```
+   ✅ Servicio de email configurado correctamente con Resend
    ```
 
-3. **Revisa tu bandeja de entrada** (o spam) y busca el email de verificación
+---
 
-### Desde la App Flutter:
+## 🌐 Paso 4: Configurar en Render (Producción)
 
-1. Cambia `isDevelopment` a `true` en [api_constants.dart](c:\Users\chrgargar4\Desktop\minifun\lib\constants\api_constants.dart)
+**IMPORTANTE:** Debes hacer esto para que funcione en producción.
 
+1. Ve a [Render Dashboard](https://dashboard.render.com/)
+2. Selecciona tu servicio **backend-minifun**
+3. Ve a la pestaña **"Environment"**
+4. Agrega estas 3 variables:
+
+   | Key | Value |
+   |-----|-------|
+   | `RESEND_API_KEY` | `re_tu_api_key_aqui` |
+   | `EMAIL_FROM` | `"MINIFUN <onboarding@resend.dev>"` |
+   | `FRONTEND_URL` | `https://backend-minifun.onrender.com` |
+
+5. Haz clic en **"Save Changes"**
+6. Render automáticamente redesplegará el backend
+
+---
+
+## 🧪 Paso 5: Probar el Envío de Emails
+
+### Probar desde Postman o cURL:
+
+```bash
+curl -X POST https://backend-minifun.onrender.com/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "testuser123",
+    "email": "tu-email@gmail.com",
+    "password": "password123"
+  }'
+```
+
+### Probar desde la App Flutter:
+
+1. Asegúrate de que `isDevelopment = false` en [api_constants.dart](c:\Users\chrgargar4\Desktop\minifun\lib\constants\api_constants.dart)
 2. Ejecuta la app y regístrate con un email real
-
-3. Revisa tu bandeja de entrada para el email de verificación
-
----
-
-## 🔍 Verificar que Funciona
-
-Si todo está configurado correctamente, verás estos logs al iniciar el servidor:
-
-```
-[INFO] Inicializando servicio de email...
-[INFO] Servicio de email configurado correctamente
-[INFO] Conexión con servidor SMTP verificada exitosamente
-```
-
-Si hay problemas, verás warnings como:
-
-```
-[WARN] Configuración de email no encontrada. El envío de emails está deshabilitado.
-```
+3. Revisa tu bandeja de entrada (puede tardar 1-2 minutos)
+4. **Si no lo ves, revisa la carpeta de spam**
 
 ---
 
-## ✅ Endpoints Disponibles
+## ✅ Verificar que Funciona
+
+### En los logs de Render:
+
+```
+✅ Servicio de email configurado correctamente con Resend
+✅ Email de verificación enviado a usuario@example.com
+```
+
+### Si ves errores:
+
+```
+❌ RESEND_API_KEY no encontrada
+```
+→ Verifica que agregaste la variable en Render
+
+```
+❌ Error al enviar email de verificación
+```
+→ Revisa que la API Key sea correcta (empieza con `re_`)
+
+---
+
+## 📧 Endpoints Disponibles
 
 Una vez configurado, estos son los endpoints relacionados con email:
 
-### 1. Registrar usuario (envía email automáticamente si se proporciona email)
+### 1. Registrar usuario (envía email automáticamente)
 ```http
 POST /api/auth/register
 Content-Type: application/json
@@ -234,74 +203,79 @@ Authorization: Bearer <jwt-token>
 
 ## ❓ Problemas Comunes
 
-### 1. "Error: Invalid login"
-**Causa:** Contraseña incorrecta o no usaste App Password
-
+### 1. "RESEND_API_KEY no encontrada"
 **Solución:**
-- Asegúrate de usar la **App Password** (16 caracteres), no tu contraseña normal de Gmail
-- Verifica que la verificación en 2 pasos esté activada
+- Verifica que agregaste la variable en Render
+- Asegúrate de que el nombre sea exactamente `RESEND_API_KEY`
+- Guarda los cambios y espera a que Render redesplegue
 
 ### 2. Los emails van a spam
-**Causa:** Gmail detecta el email como spam porque viene de un servidor no verificado
-
 **Solución:**
 - Marca el email como "No es spam" en Gmail
-- Para producción, considera usar un servicio profesional como SendGrid o Resend
-- Configura SPF y DKIM (avanzado)
+- En producción, considera verificar tu propio dominio en Resend
+- Los emails desde `@resend.dev` pueden ir a spam inicialmente
 
-### 3. "Connection timeout"
-**Causa:** Firewall bloqueando el puerto 587
-
+### 3. "Error al enviar email de verificación"
 **Solución:**
-- Verifica que el puerto 587 esté abierto
-- Intenta cambiar `EMAIL_PORT=465` (SSL)
-- Si usas Render, verifica que las variables de entorno estén correctas
+- Verifica que la API Key sea correcta
+- Asegúrate de que no la copiaste con espacios extra
+- Revisa que la API Key esté activa en Resend
 
-### 4. No se envían emails pero no hay error
-**Causa:** Variables de entorno no configuradas
-
+### 4. El enlace no funciona
 **Solución:**
-- Verifica que `EMAIL_USER` y `EMAIL_PASSWORD` estén en `.env`
-- Reinicia el servidor después de cambiar `.env`
-- Revisa los logs del servidor para ver warnings
+- Verifica que `FRONTEND_URL` apunte a tu backend de Render
+- Por ahora: `https://backend-minifun.onrender.com`
+- Cuando tengas frontend web, cámbialo a tu dominio de frontend
 
 ---
 
-## 📝 Notas Importantes
+## 🎯 Notas Importantes
 
 ### Seguridad
 - **NUNCA subas el archivo `.env` a GitHub** (ya está en `.gitignore`)
-- La App Password es sensible, protégela como una contraseña
-- Usa una cuenta de Gmail específica para la app (no tu cuenta personal)
+- La API Key es sensible, protégela como una contraseña
+- No compartas tu API Key en público
 
-### Límites de Gmail
-- **500 emails por día** en cuentas gratuitas
-- Gmail puede bloquear temporalmente el envío si detecta spam
+### Límites de Resend (Plan Gratuito)
+- **100 emails por día**
+- Suficiente para empezar y hacer pruebas
+- Si necesitas más, Resend tiene planes de pago muy económicos
 
-### Alternativas Recomendadas para Producción
-- **Resend** - 100 emails/día gratis, mejor deliverability
-- **SendGrid** - 100 emails/día gratis, muy usado
-- **AWS SES** - Muy barato, requiere configuración más compleja
+### Dominio Personalizado (Opcional - Futuro)
+Por ahora usas `onboarding@resend.dev` (gratis).
 
----
-
-## 🎯 Próximos Pasos
-
-Una vez configurado el email:
-
-1. ✅ Registra usuarios desde la app Flutter
-2. ✅ Verifica que reciban el email
-3. ✅ Implementa la pantalla de verificación en Flutter (opcional)
-4. 🔜 Agregar recordatorio si el usuario no verifica su email
-5. 🔜 Agregar funcionalidad de "Recuperar contraseña" por email
+Si quieres emails desde tu propio dominio (`noreply@minifun.com`):
+1. Compra un dominio
+2. Verifica el dominio en Resend
+3. Cambia `EMAIL_FROM` a tu dominio
 
 ---
 
-## 📧 Contacto
+## 📝 Checklist Final
 
-Si tienes problemas con la configuración, revisa los logs del servidor para ver los errores específicos.
+Antes de desplegar, asegúrate de:
 
-**Logs importantes:**
-- `[INFO] Servicio de email configurado correctamente` ✅
-- `[WARN] Configuración de email no encontrada` ❌
-- `[ERROR] Error al enviar email de verificación` ❌
+- ✅ Creaste cuenta en Resend
+- ✅ Obtuviste tu API Key
+- ✅ Agregaste `RESEND_API_KEY` en Render
+- ✅ Agregaste `EMAIL_FROM` en Render
+- ✅ Agregaste `FRONTEND_URL` en Render
+- ✅ Guardaste cambios en Render
+- ✅ Esperaste a que Render redesplegara
+- ✅ Probaste registrarte con un email real
+- ✅ Verificaste que llegó el email
+
+---
+
+## 🆘 ¿Necesitas Ayuda?
+
+Si tienes problemas:
+1. Revisa los logs de Render (pestaña "Logs")
+2. Busca mensajes que empiecen con `✅` o `❌`
+3. Verifica que todas las variables de entorno estén correctas
+
+---
+
+## 🎉 ¡Listo!
+
+Una vez configurado, cada vez que un usuario se registre con email, recibirá automáticamente un correo de verificación. El sistema está listo para producción.

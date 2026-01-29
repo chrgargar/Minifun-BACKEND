@@ -1,72 +1,69 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
 const logger = require('../config/logger');
 const { getVerificationEmailTemplate } = require('../templates/verificationEmail');
 
 /**
- * Servicio de envío de emails usando Gmail y Nodemailer
+ * Servicio de envío de emails usando Resend
+ *
+ * Resend es un servicio de envío de emails profesional que usa HTTP API
+ * en lugar de SMTP, lo que lo hace compatible con Render y otros hostings
+ * que bloquean puertos SMTP.
  *
  * Configuración requerida en .env:
- * - EMAIL_HOST: smtp.gmail.com
- * - EMAIL_PORT: 587
- * - EMAIL_USER: tu-correo@gmail.com
- * - EMAIL_PASSWORD: tu-app-password (no la contraseña normal)
- * - EMAIL_FROM: "MINIFUN <tu-correo@gmail.com>"
- * - FRONTEND_URL: URL del frontend para los enlaces (ej: http://localhost:3000)
+ * - RESEND_API_KEY: Tu API key de Resend (empieza con re_...)
+ * - EMAIL_FROM: "MINIFUN <noreply@resend.dev>" o tu dominio verificado
+ * - FRONTEND_URL: URL del frontend para los enlaces (ej: https://backend-minifun.onrender.com)
+ *
+ * Ventajas sobre SMTP:
+ * - No requiere puertos SMTP (funciona en Render, Vercel, Netlify, etc.)
+ * - Mejor deliverability (menos probabilidad de ir a spam)
+ * - API más simple y moderna
+ * - 100 emails/día gratis
  */
 class EmailService {
   constructor() {
-    this.transporter = null;
+    this.resend = null;
     this.isConfigured = false;
   }
 
   /**
-   * Inicializa el transportador de Nodemailer con las credenciales de Gmail
+   * Inicializa el cliente de Resend con la API Key
    */
   initialize() {
-    const emailUser = process.env.EMAIL_USER;
-    const emailPassword = process.env.EMAIL_PASSWORD;
+    const apiKey = process.env.RESEND_API_KEY;
 
-    if (!emailUser || !emailPassword) {
-      logger.warn('Configuración de email no encontrada. El envío de emails está deshabilitado.');
-      logger.warn('Para habilitar emails, configura EMAIL_USER y EMAIL_PASSWORD en .env');
+    if (!apiKey) {
+      logger.warn('RESEND_API_KEY no encontrada. El envío de emails está deshabilitado.');
+      logger.warn('Para habilitar emails:');
+      logger.warn('1. Ve a resend.com y crea una cuenta');
+      logger.warn('2. Obtén tu API Key');
+      logger.warn('3. Configura RESEND_API_KEY en .env');
       return;
     }
 
     try {
-      this.transporter = nodemailer.createTransport({
-        host: process.env.EMAIL_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.EMAIL_PORT) || 587,
-        secure: false, // true para 465, false para otros puertos
-        auth: {
-          user: emailUser,
-          pass: emailPassword,
-        },
-      });
-
+      this.resend = new Resend(apiKey);
       this.isConfigured = true;
-      logger.info('Servicio de email configurado correctamente');
+      logger.info('✅ Servicio de email configurado correctamente con Resend');
     } catch (error) {
-      logger.error('Error al configurar el servicio de email:', error);
+      logger.error('❌ Error al configurar el servicio de email:', error);
     }
   }
 
   /**
-   * Verifica la conexión con el servidor SMTP
-   * @returns {Promise<boolean>} true si la conexión es exitosa
+   * Verifica que el servicio esté configurado
+   * @returns {Promise<boolean>} true si está configurado
    */
   async verifyConnection() {
     if (!this.isConfigured) {
+      logger.warn('Servicio de email no configurado');
       return false;
     }
 
-    try {
-      await this.transporter.verify();
-      logger.info('Conexión con servidor SMTP verificada exitosamente');
-      return true;
-    } catch (error) {
-      logger.error('Error al verificar conexión con servidor SMTP:', error);
-      return false;
-    }
+    // Resend no tiene un método de "verify" como SMTP
+    // Simplemente verificamos que esté inicializado
+    logger.info('✅ Servicio de email con Resend está listo');
+    return true;
   }
 
   /**
@@ -75,6 +72,7 @@ class EmailService {
    * @param {Object} user - Usuario al que se enviará el email
    * @param {string} user.email - Email del usuario
    * @param {string} user.username - Nombre de usuario
+   * @param {string} user.id - ID del usuario
    * @param {string} verificationToken - Token de verificación único
    * @returns {Promise<boolean>} true si el email se envió correctamente
    */
@@ -89,25 +87,30 @@ class EmailService {
       const verificationUrl = `${frontendUrl}/verify-email?token=${verificationToken}`;
 
       const htmlContent = getVerificationEmailTemplate(user.username, verificationUrl);
+      const textContent = this._generatePlainTextVersion(user.username, verificationUrl);
 
-      const mailOptions = {
-        from: process.env.EMAIL_FROM || `"MINIFUN" <${process.env.EMAIL_USER}>`,
-        to: user.email,
+      // Enviar email con Resend
+      const response = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
+        to: [user.email],
         subject: '✓ Verifica tu cuenta de MINIFUN',
         html: htmlContent,
-        text: this._generatePlainTextVersion(user.username, verificationUrl),
-      };
-
-      const info = await this.transporter.sendMail(mailOptions);
-
-      logger.info(`Email de verificación enviado a ${user.email}`, {
-        messageId: info.messageId,
-        userId: user.id,
+        text: textContent,
       });
 
-      return true;
+      // Resend retorna un objeto con id si fue exitoso
+      if (response.data && response.data.id) {
+        logger.info(`✅ Email de verificación enviado a ${user.email}`, {
+          emailId: response.data.id,
+          userId: user.id,
+        });
+        return true;
+      } else {
+        logger.error(`❌ Error al enviar email a ${user.email}:`, response.error);
+        return false;
+      }
     } catch (error) {
-      logger.error(`Error al enviar email de verificación a ${user.email}:`, error);
+      logger.error(`❌ Error al enviar email de verificación a ${user.email}:`, error);
       return false;
     }
   }
