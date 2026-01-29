@@ -4,6 +4,7 @@ const jwtConfig = require('../config/jwt');
 const { successResponse, errorResponse } = require('../utils/responseUtils');
 const logger = require('../config/logger');
 const emailService = require('../services/emailService');
+const { getVerificationSuccessPage, getVerificationErrorPage } = require('../templates/verificationPage');
 
 /**
  * POST /auth/register
@@ -270,13 +271,14 @@ exports.logout = async (req, res, next) => {
 /**
  * GET /auth/verify-email/:token
  * Verificar email del usuario con el token recibido por correo
+ * Devuelve una página HTML bonita en lugar de JSON
  */
 exports.verifyEmail = async (req, res, next) => {
   try {
     const { token } = req.params;
 
     if (!token) {
-      return errorResponse(res, 'Token de verificación requerido', 400);
+      return res.status(400).send(getVerificationErrorPage('Token de verificación requerido'));
     }
 
     logger.auth('Intento de verificación de email', { token: token.substring(0, 10) + '...', ip: req.ip });
@@ -288,7 +290,7 @@ exports.verifyEmail = async (req, res, next) => {
 
     if (!user) {
       logger.security('Token de verificación inválido', { token: token.substring(0, 10) + '...', ip: req.ip });
-      return errorResponse(res, 'Token de verificación inválido o expirado', 400);
+      return res.status(400).send(getVerificationErrorPage('Token de verificación inválido o expirado'));
     }
 
     // Verificar si el token es válido y no ha expirado
@@ -298,7 +300,7 @@ exports.verifyEmail = async (req, res, next) => {
         username: user.username,
         ip: req.ip
       });
-      return errorResponse(res, 'El token de verificación ha expirado. Solicita un nuevo correo de verificación.', 400);
+      return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
     }
 
     // Verificar el email del usuario
@@ -314,18 +316,12 @@ exports.verifyEmail = async (req, res, next) => {
       ip: req.ip
     });
 
-    return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified
-      }
-    }, 'Email verificado exitosamente. ¡Tu cuenta está activada!');
+    // Devolver página HTML de éxito
+    return res.status(200).send(getVerificationSuccessPage(user.username));
 
   } catch (error) {
     logger.error('Error en verificación de email', { error: error.message });
-    next(error);
+    return res.status(500).send(getVerificationErrorPage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.'));
   }
 };
 
