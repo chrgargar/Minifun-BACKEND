@@ -622,6 +622,7 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     // Actualizar email si se proporcionó
+    let emailChanged = false;
     if (email !== undefined && email !== user.email) {
       if (email) {
         const existingEmail = await User.findOne({ where: { email } });
@@ -630,13 +631,33 @@ exports.updateProfile = async (req, res, next) => {
         }
         user.email = email;
         user.email_verified = false;
+        emailChanged = true;
       } else {
         user.email = null;
         user.email_verified = false;
       }
     }
 
-    await user.save();
+    // Si cambió el email, enviar correo de verificación al nuevo email
+    if (emailChanged) {
+      const verificationToken = user.generateVerificationToken();
+      await user.save();
+
+      const emailSent = await emailService.sendVerificationEmail(user, verificationToken);
+      if (emailSent) {
+        logger.auth('Email de verificación enviado al nuevo correo', {
+          userId: user.id,
+          email: user.email
+        });
+      } else {
+        logger.warn('No se pudo enviar email de verificación al nuevo correo', {
+          userId: user.id,
+          email: user.email
+        });
+      }
+    } else {
+      await user.save();
+    }
 
     logger.auth('Perfil actualizado', { userId: user.id, username: user.username });
 
@@ -709,6 +730,43 @@ exports.updateAvatar = async (req, res, next) => {
         avatar_base64: user.avatar_base64 || null
       }
     }, 'Avatar actualizado exitosamente');
+
+  } catch (error) {
+    logger.error('Error actualizando avatar', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * DELETE /auth/avatar
+ * Eliminar avatar del usuario
+ */
+exports.deleteAvatar = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    user.avatar_base64 = null;
+    await user.save();
+
+    logger.auth('Avatar eliminado', { userId: user.id });
+
+    return successResponse(res, {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_premium: user.is_premium,
+        created_at: user.created_at,
+        last_login: user.last_login,
+        streak_days: user.streak_days,
+        avatar_base64: null
+      }
+    }, 'Avatar eliminado exitosamente');
 
   } catch (error) {
     logger.error('Error actualizando avatar', { error: error.message });

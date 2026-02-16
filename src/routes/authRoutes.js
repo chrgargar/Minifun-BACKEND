@@ -148,6 +148,18 @@ router.put(
 );
 
 /**
+ * DELETE /auth/avatar
+ * Eliminar avatar del usuario
+ *
+ * Requiere: Token JWT válido en header Authorization
+ */
+router.delete(
+  '/avatar',
+  authenticateToken,
+  authController.deleteAvatar
+);
+
+/**
  * POST /auth/logout
  * Cerrar sesión
  *
