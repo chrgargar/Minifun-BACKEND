@@ -33,14 +33,10 @@ const rateLimitHandler = (req, res) => {
  * Límite: 100 peticiones por 15 minutos por IP
  */
 const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 100, // Límite de peticiones
-  message: {
-    success: false,
-    message: 'Demasiadas peticiones desde esta IP. Por favor, intenta más tarde.',
-  },
-  standardHeaders: true, // Retorna info del rate limit en headers `RateLimit-*`
-  legacyHeaders: false, // Deshabilita headers `X-RateLimit-*`
+  windowMs: 15 * 60 * 1000,
+  max: 100,
+  standardHeaders: true,
+  legacyHeaders: false,
   handler: rateLimitHandler,
 });
 
@@ -51,13 +47,9 @@ const generalLimiter = rateLimit({
  * Límite: 5 intentos por 15 minutos por IP
  */
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutos
-  max: 5, // Solo 5 intentos de login/registro
-  skipSuccessfulRequests: true, // No contar peticiones exitosas
-  message: {
-    success: false,
-    message: 'Demasiados intentos de autenticación. Por favor, intenta más tarde.',
-  },
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  skipSuccessfulRequests: true,
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
@@ -70,12 +62,8 @@ const authLimiter = rateLimit({
  * Límite: 3 registros por hora por IP
  */
 const registerLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hora
-  max: 3, // Solo 3 registros por hora
-  message: {
-    success: false,
-    message: 'Demasiados registros desde esta IP. Por favor, intenta más tarde.',
-  },
+  windowMs: 60 * 60 * 1000,
+  max: 3,
   standardHeaders: true,
   legacyHeaders: false,
   handler: rateLimitHandler,
@@ -88,11 +76,7 @@ const registerLimiter = rateLimit({
  */
 const devLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 1000, // Límite alto para desarrollo
-  message: {
-    success: false,
-    message: 'Rate limit excedido (modo desarrollo)',
-  },
+  max: 1000,
 });
 
 /**

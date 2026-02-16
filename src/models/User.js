@@ -74,6 +74,21 @@ module.exports = (sequelize) => {
       type: DataTypes.DATE,
       allowNull: true,
       field: 'password_reset_expires'
+    },
+    refresh_token: {
+      type: DataTypes.STRING(255),
+      allowNull: true,
+      field: 'refresh_token'
+    },
+    refresh_token_expires: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      field: 'refresh_token_expires'
+    },
+    avatar_base64: {
+      type: DataTypes.TEXT('medium'),
+      allowNull: true,
+      field: 'avatar_base64'
     }
   }, {
     tableName: 'users',
@@ -102,6 +117,11 @@ module.exports = (sequelize) => {
     const values = { ...this.get() };
     delete values.password_hash;
     delete values.verification_token;
+    delete values.verification_token_expires;
+    delete values.password_reset_token;
+    delete values.password_reset_expires;
+    delete values.refresh_token;
+    delete values.refresh_token_expires;
     return values;
   };
 
@@ -146,6 +166,24 @@ module.exports = (sequelize) => {
     this.password_hash = await bcrypt.hash(newPassword, 10);
     this.password_reset_token = null;
     this.password_reset_expires = null;
+  };
+
+  // Método para generar refresh token
+  User.prototype.generateRefreshToken = function() {
+    this.refresh_token = crypto.randomBytes(64).toString('hex');
+    this.refresh_token_expires = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 días
+    return this.refresh_token;
+  };
+
+  // Método para verificar si el refresh token es válido
+  User.prototype.isRefreshTokenValid = function(token) {
+    if (!this.refresh_token || !this.refresh_token_expires) {
+      return false;
+    }
+    return (
+      this.refresh_token === token &&
+      this.refresh_token_expires > new Date()
+    );
   };
 
   return User;

@@ -40,6 +40,38 @@ exports.validateRegister = (req, res, next) => {
 };
 
 /**
+ * Validación de actualización de perfil
+ */
+exports.validateProfileUpdate = (req, res, next) => {
+  const { username, email } = req.body;
+
+  if (!username && email === undefined) {
+    return errorResponse(res, 'Debes proporcionar al menos un campo para actualizar', 400);
+  }
+
+  if (username !== undefined) {
+    if (!username || username.trim().length === 0) {
+      return errorResponse(res, 'El username no puede estar vacío', 400);
+    }
+    if (username.length < 3) {
+      return errorResponse(res, 'El username debe tener al menos 3 caracteres', 400);
+    }
+    if (username.length > 50) {
+      return errorResponse(res, 'El username no puede exceder 50 caracteres', 400);
+    }
+  }
+
+  if (email && email.trim().length > 0) {
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+      return errorResponse(res, 'El formato del email es inválido', 400);
+    }
+  }
+
+  next();
+};
+
+/**
  * Validación de login
  */
 exports.validateLogin = (req, res, next) => {

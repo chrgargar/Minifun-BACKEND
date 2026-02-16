@@ -1,5 +1,6 @@
 const winston = require('winston');
 const path = require('path');
+const fs = require('fs');
 
 /**
  * Sistema de logging centralizado usando Winston
@@ -13,6 +14,12 @@ const path = require('path');
  * - info: Información general sobre operaciones del sistema
  * - debug: Información detallada para debugging (solo en desarrollo)
  */
+
+// Crear directorio de logs antes de inicializar transports
+const logsDir = path.join(process.cwd(), 'logs');
+if (!fs.existsSync(logsDir)) {
+  fs.mkdirSync(logsDir, { recursive: true });
+}
 
 // Formato personalizado para los logs
 const customFormat = winston.format.combine(
@@ -74,10 +81,9 @@ const logger = winston.createLogger({
  * Métodos específicos para diferentes contextos
  */
 
-// Log de peticiones HTTP
-logger.http = (method, url, statusCode, responseTime) => {
-  const level = statusCode >= 500 ? 'error' : statusCode >= 400 ? 'warn' : 'info';
-  logger.log(level, `${method} ${url} ${statusCode} - ${responseTime}ms`);
+// Log de peticiones HTTP (recibe un solo string formateado por Morgan)
+logger.http = (message) => {
+  logger.log('info', message);
 };
 
 // Log de eventos de autenticación

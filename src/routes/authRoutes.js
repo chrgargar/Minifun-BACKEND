@@ -3,7 +3,7 @@ const router = express.Router();
 
 const authController = require('../controllers/authController');
 const { authenticateToken } = require('../middlewares/authMiddleware');
-const { validateRegister, validateLogin } = require('../middlewares/validators');
+const { validateRegister, validateLogin, validateProfileUpdate } = require('../middlewares/validators');
 const { authLimiter, registerLimiter } = require('../middlewares/rateLimiter');
 
 /**
@@ -95,6 +95,19 @@ router.post(
   authController.resetPassword
 );
 
+/**
+ * POST /auth/refresh-token
+ * Renovar access token usando refresh token
+ *
+ * Ruta pública (no requiere JWT, usa refresh token en body)
+ * Rate limit: 5 intentos por 15 minutos
+ */
+router.post(
+  '/refresh-token',
+  authLimiter,
+  authController.refreshToken
+);
+
 // ==================== RUTAS PROTEGIDAS ====================
 
 /**
@@ -107,6 +120,31 @@ router.get(
   '/me',
   authenticateToken,
   authController.getMe
+);
+
+/**
+ * PATCH /auth/profile
+ * Actualizar perfil del usuario (username, email)
+ *
+ * Requiere: Token JWT válido en header Authorization
+ */
+router.patch(
+  '/profile',
+  authenticateToken,
+  validateProfileUpdate,
+  authController.updateProfile
+);
+
+/**
+ * PUT /auth/avatar
+ * Actualizar avatar del usuario (Base64)
+ *
+ * Requiere: Token JWT válido en header Authorization
+ */
+router.put(
+  '/avatar',
+  authenticateToken,
+  authController.updateAvatar
 );
 
 /**

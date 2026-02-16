@@ -20,19 +20,6 @@ exports.register = async (req, res, next) => {
 
     logger.auth('Intento de registro', { username, email: email || 'sin email', ip: req.ip });
 
-    // Validaciones (ya hechas por middleware pero doble verificación)
-    if (!username || !password) {
-      return errorResponse(res, 'Username y password son requeridos', 400);
-    }
-
-    if (password.length < 6) {
-      return errorResponse(res, 'La contraseña debe tener al menos 6 caracteres', 400);
-    }
-
-    if (username.length < 3) {
-      return errorResponse(res, 'El username debe tener al menos 3 caracteres', 400);
-    }
-
     // Verificar si el usuario ya existe
     const existingUser = await User.findOne({
       where: { username }
@@ -101,7 +88,7 @@ exports.register = async (req, res, next) => {
       ip: req.ip
     });
 
-    // Generar JWT para autenticación inmediata post-registro
+    // Generar JWT (access token) para autenticación inmediata post-registro
     const token = jwt.sign(
       {
         userId: user.id,
@@ -111,8 +98,13 @@ exports.register = async (req, res, next) => {
       { expiresIn: jwtConfig.expiresIn }
     );
 
+    // Generar refresh token para renovación sin re-login
+    const refreshToken = user.generateRefreshToken();
+    await user.save();
+
     return successResponse(res, {
       token,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -121,12 +113,13 @@ exports.register = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
       }
     }, email ? 'Usuario registrado. Verifica tu email para activar tu cuenta.' : 'Usuario registrado exitosamente', 201);
 
   } catch (error) {
-    logger.error('Error en registro', { username, error: error.message });
+    logger.error('Error en registro', { error: error.message });
     next(error);
   }
 };
@@ -176,11 +169,29 @@ exports.login = async (req, res, next) => {
       return errorResponse(res, 'Credenciales incorrectas', 401);
     }
 
-    // Actualizar último login para tracking de actividad
-    user.last_login = new Date();
+    // Calcular racha de días consecutivos
+    const now = new Date();
+    const lastLogin = user.last_login ? new Date(user.last_login) : null;
+    if (lastLogin) {
+      const lastDay = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const diffDays = Math.round((today - lastDay) / (1000 * 60 * 60 * 24));
+      if (diffDays === 1) {
+        user.streak_days = (user.streak_days || 0) + 1;
+      } else if (diffDays > 1) {
+        user.streak_days = 1;
+      }
+      // Si diffDays === 0 (mismo día), no cambiar streak
+    } else {
+      user.streak_days = 1;
+    }
+
+    // Actualizar último login y generar refresh token
+    user.last_login = now;
+    const refreshToken = user.generateRefreshToken();
     await user.save();
 
-    // Generar JWT para mantener la sesión del usuario
+    // Generar JWT (access token)
     const token = jwt.sign(
       {
         userId: user.id,
@@ -198,6 +209,7 @@ exports.login = async (req, res, next) => {
 
     return successResponse(res, {
       token,
+      refreshToken,
       user: {
         id: user.id,
         username: user.username,
@@ -206,12 +218,13 @@ exports.login = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
       }
     }, 'Login exitoso');
 
   } catch (error) {
-    logger.error('Error en login', { usernameOrEmail, error: error.message });
+    logger.error('Error en login', { error: error.message });
     next(error);
   }
 };
@@ -238,7 +251,8 @@ exports.getMe = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
       }
     });
 
@@ -249,16 +263,13 @@ exports.getMe = async (req, res, next) => {
 
 /**
  * POST /auth/logout
- * Cerrar sesión (opcional con JWT)
- * En JWT stateless, el logout es manejado por el cliente eliminando el token
- * Este endpoint es simbólico o puede usarse para blacklist de tokens
+ * Cerrar sesión - invalida el refresh token del usuario
  */
 exports.logout = async (req, res, next) => {
   try {
-    // Actualización opcional del último login
     if (req.userId) {
       await User.update(
-        { last_login: new Date() },
+        { refresh_token: null, refresh_token_expires: null },
         { where: { id: req.userId } }
       );
     }
@@ -473,7 +484,7 @@ exports.resetPassword = async (req, res, next) => {
 
     // Validaciones
     if (!token) {
-      return res.status(400).send(getPasswordResetFormPage(token, 'Token de reset requerido'));
+      return res.status(400).send(getPasswordResetErrorPage('Token de reset requerido'));
     }
 
     if (!password || !confirmPassword) {
@@ -519,5 +530,188 @@ exports.resetPassword = async (req, res, next) => {
   } catch (error) {
     logger.error('Error en reset de contraseña', { error: error.message });
     return res.status(500).send(getPasswordResetErrorPage('Ocurrió un error inesperado'));
+  }
+};
+
+/**
+ * POST /auth/refresh-token
+ * Renovar access token usando el refresh token
+ */
+exports.refreshToken = async (req, res, next) => {
+  try {
+    const { refreshToken } = req.body;
+
+    if (!refreshToken) {
+      return errorResponse(res, 'Refresh token es requerido', 400);
+    }
+
+    // Buscar usuario por refresh token
+    const user = await User.findOne({ where: { refresh_token: refreshToken } });
+
+    if (!user) {
+      return errorResponse(res, 'Refresh token inválido', 401);
+    }
+
+    if (!user.isRefreshTokenValid(refreshToken)) {
+      // Limpiar refresh token expirado
+      user.refresh_token = null;
+      user.refresh_token_expires = null;
+      await user.save();
+      return errorResponse(res, 'Refresh token expirado. Inicia sesión nuevamente.', 401);
+    }
+
+    // Generar nuevo access token
+    const token = jwt.sign(
+      {
+        userId: user.id,
+        username: user.username
+      },
+      jwtConfig.secret,
+      { expiresIn: jwtConfig.expiresIn }
+    );
+
+    // Generar nuevo refresh token (rotación para mayor seguridad)
+    const newRefreshToken = user.generateRefreshToken();
+    await user.save();
+
+    logger.auth('Token renovado', { userId: user.id });
+
+    return successResponse(res, {
+      token,
+      refreshToken: newRefreshToken,
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_premium: user.is_premium,
+        created_at: user.created_at,
+        last_login: user.last_login,
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
+      }
+    }, 'Token renovado exitosamente');
+
+  } catch (error) {
+    logger.error('Error en refresh token', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * PATCH /auth/profile
+ * Actualizar perfil del usuario (username, email)
+ */
+exports.updateProfile = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    const { username, email } = req.body;
+
+    // Actualizar username si se proporcionó
+    if (username && username !== user.username) {
+      const existingUser = await User.findOne({ where: { username } });
+      if (existingUser) {
+        return errorResponse(res, 'El nombre de usuario ya está en uso', 409);
+      }
+      user.username = username;
+    }
+
+    // Actualizar email si se proporcionó
+    if (email !== undefined && email !== user.email) {
+      if (email) {
+        const existingEmail = await User.findOne({ where: { email } });
+        if (existingEmail && existingEmail.id !== user.id) {
+          return errorResponse(res, 'El email ya está en uso', 409);
+        }
+        user.email = email;
+        user.email_verified = false;
+      } else {
+        user.email = null;
+        user.email_verified = false;
+      }
+    }
+
+    await user.save();
+
+    logger.auth('Perfil actualizado', { userId: user.id, username: user.username });
+
+    return successResponse(res, {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_premium: user.is_premium,
+        created_at: user.created_at,
+        last_login: user.last_login,
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
+      }
+    }, 'Perfil actualizado exitosamente');
+
+  } catch (error) {
+    logger.error('Error actualizando perfil', { error: error.message });
+    next(error);
+  }
+};
+
+/**
+ * PUT /auth/avatar
+ * Actualizar avatar del usuario (Base64)
+ */
+exports.updateAvatar = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    const { avatar } = req.body;
+
+    if (!avatar) {
+      return errorResponse(res, 'El avatar es requerido', 400);
+    }
+
+    // Validar formato Base64 con prefijo data URI
+    const dataUriRegex = /^data:image\/(jpeg|jpg|png|webp);base64,/;
+    if (!dataUriRegex.test(avatar)) {
+      return errorResponse(res, 'Formato de imagen inválido. Usa JPEG, PNG o WebP.', 400);
+    }
+
+    // Validar tamaño (~5MB máximo en Base64, que es ~3.75MB de imagen real)
+    const base64Data = avatar.split(',')[1];
+    const sizeInBytes = Buffer.from(base64Data, 'base64').length;
+    if (sizeInBytes > 5 * 1024 * 1024) {
+      return errorResponse(res, 'La imagen es demasiado grande. Máximo 5MB.', 400);
+    }
+
+    user.avatar_base64 = avatar;
+    await user.save();
+
+    logger.auth('Avatar actualizado', { userId: user.id });
+
+    return successResponse(res, {
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_premium: user.is_premium,
+        created_at: user.created_at,
+        last_login: user.last_login,
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
+      }
+    }, 'Avatar actualizado exitosamente');
+
+  } catch (error) {
+    logger.error('Error actualizando avatar', { error: error.message });
+    next(error);
   }
 };

@@ -20,19 +20,11 @@ async function startServer() {
     logger.info('Validando configuración...');
     validateConfig();
 
-    // 2. Crear directorio de logs si no existe
-    const fs = require('fs');
-    const logsDir = 'logs';
-    if (!fs.existsSync(logsDir)) {
-      fs.mkdirSync(logsDir);
-      logger.info('Directorio de logs creado');
-    }
-
-    // 3. Sincronizar base de datos
+    // 2. Sincronizar base de datos
     logger.info('Conectando a base de datos...');
     await syncDatabase();
 
-    // 4. Inicializar servicio de email
+    // 3. Inicializar servicio de email
     logger.info('Inicializando servicio de email...');
     emailService.initialize();
 
@@ -41,7 +33,7 @@ async function startServer() {
       logger.warn('No se pudo verificar la conexión con el servidor SMTP', err);
     });
 
-    // 5. Iniciar servidor Express
+    // 4. Iniciar servidor Express
     app.listen(PORT, () => {
       logger.info('═══════════════════════════════════════════════════');
       logger.info(`🚀 Servidor MINIFUN corriendo en puerto ${PORT}`);

@@ -1,5 +1,6 @@
 const { Sequelize } = require('sequelize');
 const config = require('../config/database');
+const logger = require('../config/logger');
 
 const sequelize = new Sequelize(
   config.database,
@@ -21,13 +22,14 @@ const User = require('./User')(sequelize);
 async function syncDatabase() {
   try {
     await sequelize.authenticate();
-    console.log('✅ Conexión a MySQL establecida correctamente.');
+    logger.info('Conexión a MySQL establecida correctamente');
 
-    // Sincronizar modelos (alter: true actualiza sin borrar datos)
-    await sequelize.sync({ alter: true });
-    console.log('✅ Modelos sincronizados correctamente.');
+    // En producción no usar alter para evitar pérdida de datos
+    const isProduction = process.env.NODE_ENV === 'production';
+    await sequelize.sync(isProduction ? {} : { alter: true });
+    logger.info('Modelos sincronizados correctamente');
   } catch (error) {
-    console.error('❌ Error al conectar con MySQL:', error);
+    logger.error('Error al conectar con MySQL', error);
     process.exit(1);
   }
 }

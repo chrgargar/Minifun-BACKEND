@@ -26,3 +26,16 @@ logs/
 # Temporales
 temp/
 tmp/
+
+# Coverage de tests
+coverage/
+
+# Build
+dist/
+build/
+
+# Más variantes de .env
+.env.development.local
+.env.test.local
+.env.production.local
+.env.test

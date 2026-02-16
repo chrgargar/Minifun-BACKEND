@@ -86,7 +86,12 @@ function validateJwtSecret() {
     );
   }
 
-  if (secret.length < 32) {
+  if (isProduction && secret.length < 32) {
+    throw new Error(
+      '❌ JWT_SECRET demasiado corto en producción.\n' +
+      '   Debe tener al menos 32 caracteres para mayor seguridad.'
+    );
+  } else if (secret.length < 32) {
     console.warn('⚠️  JWT_SECRET debería tener al menos 32 caracteres para mayor seguridad');
   }
 }

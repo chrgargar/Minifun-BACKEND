@@ -21,9 +21,10 @@ app.set('trust proxy', 1);
 app.use(helmet());
 
 // CORS: controla qué dominios pueden acceder a la API
+const corsOrigin = process.env.CORS_ORIGIN || '*';
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
-  credentials: true
+  origin: corsOrigin,
+  credentials: corsOrigin !== '*'
 }));
 
 // Rate limiting: previene abuso de la API
