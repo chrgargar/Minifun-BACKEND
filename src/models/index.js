@@ -24,9 +24,8 @@ async function syncDatabase() {
     await sequelize.authenticate();
     logger.info('Conexión a MySQL establecida correctamente');
 
-    // En producción no usar alter para evitar pérdida de datos
-    const isProduction = process.env.NODE_ENV === 'production';
-    await sequelize.sync(isProduction ? {} : { alter: true });
+    // alter: true añade columnas nuevas sin borrar datos existentes
+    await sequelize.sync({ alter: true });
     logger.info('Modelos sincronizados correctamente');
   } catch (error) {
     logger.error('Error al conectar con MySQL', error);
