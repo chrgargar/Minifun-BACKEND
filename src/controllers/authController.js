@@ -715,19 +715,28 @@ exports.updateAvatar = async (req, res, next) => {
     user.avatar_base64 = avatar;
     await user.save();
 
-    logger.auth('Avatar actualizado', { userId: user.id });
+    // Verificar que realmente se guardó leyendo de la BD
+    const savedUser = await User.findByPk(req.userId);
+    const avatarSaved = savedUser.avatar_base64 ? savedUser.avatar_base64.length : 0;
+    const avatarSent = avatar.length;
+    logger.auth('Avatar actualizado', {
+      userId: user.id,
+      avatarSentLength: avatarSent,
+      avatarSavedLength: avatarSaved,
+      match: avatarSent === avatarSaved
+    });
 
     return successResponse(res, {
       user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        id: savedUser.id,
+        username: savedUser.username,
+        email: savedUser.email,
+        email_verified: savedUser.email_verified,
+        is_premium: savedUser.is_premium,
+        created_at: savedUser.created_at,
+        last_login: savedUser.last_login,
+        streak_days: savedUser.streak_days,
+        avatar_base64: savedUser.avatar_base64 || null
       }
     }, 'Avatar actualizado exitosamente');
 
