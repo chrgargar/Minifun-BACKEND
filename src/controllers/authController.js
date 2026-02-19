@@ -113,8 +113,7 @@ exports.register = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     }, email ? 'Usuario registrado. Verifica tu email para activar tu cuenta.' : 'Usuario registrado exitosamente', 201);
 
@@ -218,8 +217,7 @@ exports.login = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     }, 'Login exitoso');
 
@@ -251,8 +249,7 @@ exports.getMe = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     });
 
@@ -644,8 +641,7 @@ exports.refreshToken = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     }, 'Token renovado exitosamente');
 
@@ -738,8 +734,7 @@ exports.updateProfile = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     }, message);
 
@@ -794,8 +789,7 @@ exports.updateAvatar = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: user.avatar_base64 || null
+        streak_days: user.streak_days
       }
     }, 'Avatar actualizado exitosamente');
 
@@ -831,8 +825,7 @@ exports.deleteAvatar = async (req, res, next) => {
         is_premium: user.is_premium,
         created_at: user.created_at,
         last_login: user.last_login,
-        streak_days: user.streak_days,
-        avatar_base64: null
+        streak_days: user.streak_days
       }
     }, 'Avatar eliminado exitosamente');
 
