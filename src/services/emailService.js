@@ -2,6 +2,7 @@ const { Resend } = require('resend');
 const logger = require('../config/logger');
 const { getVerificationEmailTemplate } = require('../templates/verificationEmail');
 const { getPasswordResetEmailTemplate, getPasswordResetPlainText } = require('../templates/passwordResetEmail');
+const { getEmailChangeVerificationTemplate, getEmailChangePlainText } = require('../templates/emailChangeVerification');
 
 /**
  * Servicio de envío de emails usando Resend
@@ -142,6 +143,46 @@ Si no creaste una cuenta en MINIFUN, puedes ignorar este correo de forma segura.
 
 © ${new Date().getFullYear()} MINIFUN - Todos los derechos reservados
     `.trim();
+  }
+
+  /**
+   * Envía el email de verificación cuando el usuario cambia su email
+   */
+  async sendEmailChangeVerification(user, verificationToken) {
+    if (!this.isConfigured) {
+      logger.warn(`No se pudo enviar email de cambio a ${user.email}: Servicio no configurado`);
+      return false;
+    }
+
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+      const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
+
+      const htmlContent = getEmailChangeVerificationTemplate(user.username, verificationUrl);
+      const textContent = getEmailChangePlainText(user.username, verificationUrl);
+
+      const response = await this.resend.emails.send({
+        from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
+        to: [user.email],
+        subject: '📧 Verifica tu nuevo email - MINIFUN',
+        html: htmlContent,
+        text: textContent,
+      });
+
+      if (response.data && response.data.id) {
+        logger.info(`✅ Email de cambio de correo enviado a ${user.email}`, {
+          emailId: response.data.id,
+          userId: user.id,
+        });
+        return true;
+      } else {
+        logger.error(`❌ Error al enviar email de cambio a ${user.email}:`, response.error);
+        return false;
+      }
+    } catch (error) {
+      logger.error(`❌ Error al enviar email de cambio a ${user.email}:`, error);
+      return false;
+    }
   }
 
   /**

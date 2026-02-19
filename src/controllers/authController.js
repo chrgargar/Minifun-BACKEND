@@ -638,14 +638,14 @@ exports.updateProfile = async (req, res, next) => {
       }
     }
 
-    // Si cambió el email, enviar correo de verificación al nuevo email
+    // Si cambió el email, enviar correo de verificación específico para cambio de email
     if (emailChanged) {
       const verificationToken = user.generateVerificationToken();
       await user.save();
 
-      const emailSent = await emailService.sendVerificationEmail(user, verificationToken);
+      const emailSent = await emailService.sendEmailChangeVerification(user, verificationToken);
       if (emailSent) {
-        logger.auth('Email de verificación enviado al nuevo correo', {
+        logger.auth('Email de verificación de cambio enviado al nuevo correo', {
           userId: user.id,
           email: user.email
         });
