@@ -24,8 +24,9 @@ async function syncDatabase() {
     await sequelize.authenticate();
     logger.info('Conexión a MySQL establecida correctamente');
 
-    // alter: true añade columnas nuevas sin borrar datos existentes
-    await sequelize.sync({ alter: true });
+    // sync() sin alter: la tabla ya existe con todas las columnas necesarias.
+    // alter: true causaba índices duplicados que superaban el límite de MySQL (64 keys).
+    await sequelize.sync();
     logger.info('Modelos sincronizados correctamente');
   } catch (error) {
     logger.error('Error al conectar con MySQL', error);
