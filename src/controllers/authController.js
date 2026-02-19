@@ -366,6 +366,12 @@ exports.confirmVerifyEmail = async (req, res, next) => {
       return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
     }
 
+    // Si hay un pending_email, aplicar el cambio de email
+    if (user.pending_email) {
+      user.email = user.pending_email;
+      user.pending_email = null;
+    }
+
     // Verificar el email del usuario
     user.email_verified = true;
     user.verification_token = null;
@@ -673,53 +679,44 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     // Actualizar email si se proporcionó
-    let emailChanged = false;
+    // El email NO se cambia directamente: se guarda en pending_email
+    // y solo se aplica cuando el usuario verifica el nuevo email
+    let emailChangeRequested = false;
     if (email !== undefined && email !== user.email) {
       if (email) {
         const existingEmail = await User.findOne({ where: { email } });
         if (existingEmail && existingEmail.id !== user.id) {
           return errorResponse(res, 'El email ya está en uso', 409);
         }
-        user.email = email;
-        user.email_verified = false;
-        emailChanged = true;
+        user.pending_email = email;
+        emailChangeRequested = true;
       } else {
+        // Si quiere borrar el email
         user.email = null;
         user.email_verified = false;
+        user.pending_email = null;
       }
     }
 
-    // Si cambió el email, enviar correo de verificación específico para cambio de email
-    if (emailChanged) {
+    // Si solicitó cambio de email, generar token y enviar verificación al NUEVO email
+    if (emailChangeRequested) {
       const verificationToken = user.generateVerificationToken();
       await user.save();
 
-      // Verificar que el token se guardó correctamente en la BD
-      const savedUser = await User.findByPk(user.id);
-      if (!savedUser.verification_token || savedUser.verification_token !== verificationToken) {
-        logger.error('Token de verificación NO se guardó correctamente', {
-          userId: user.id,
-          tokenGenerated: verificationToken.substring(0, 10) + '...',
-          tokenInDB: savedUser.verification_token ? savedUser.verification_token.substring(0, 10) + '...' : 'NULL',
-        });
-      } else {
-        logger.auth('Token de verificación guardado correctamente', {
-          userId: user.id,
-          tokenPrefix: verificationToken.substring(0, 10) + '...',
-          expires: savedUser.verification_token_expires,
-        });
-      }
-
-      const emailSent = await emailService.sendEmailChangeVerification(user, verificationToken);
+      // Enviar email de verificación al NUEVO email (pending_email)
+      const emailSent = await emailService.sendEmailChangeVerification(
+        { ...user.get(), email: user.pending_email },
+        verificationToken
+      );
       if (emailSent) {
-        logger.auth('Email de verificación de cambio enviado al nuevo correo', {
+        logger.auth('Email de verificación de cambio enviado', {
           userId: user.id,
-          email: user.email
+          pendingEmail: user.pending_email,
         });
       } else {
         logger.warn('No se pudo enviar email de verificación al nuevo correo', {
           userId: user.id,
-          email: user.email
+          pendingEmail: user.pending_email,
         });
       }
     } else {
@@ -727,6 +724,10 @@ exports.updateProfile = async (req, res, next) => {
     }
 
     logger.auth('Perfil actualizado', { userId: user.id, username: user.username });
+
+    const message = emailChangeRequested
+      ? 'Perfil actualizado. Verifica tu nuevo email para completar el cambio.'
+      : 'Perfil actualizado exitosamente';
 
     return successResponse(res, {
       user: {
@@ -740,7 +741,7 @@ exports.updateProfile = async (req, res, next) => {
         streak_days: user.streak_days,
         avatar_base64: user.avatar_base64 || null
       }
-    }, 'Perfil actualizado exitosamente');
+    }, message);
 
   } catch (error) {
     logger.error('Error actualizando perfil', { error: error.message });

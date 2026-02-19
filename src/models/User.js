@@ -89,6 +89,11 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT('medium'),
       allowNull: true,
       field: 'avatar_base64'
+    },
+    pending_email: {
+      type: DataTypes.STRING(100),
+      allowNull: true,
+      field: 'pending_email'
     }
   }, {
     tableName: 'users',
@@ -122,6 +127,7 @@ module.exports = (sequelize) => {
     delete values.password_reset_expires;
     delete values.refresh_token;
     delete values.refresh_token_expires;
+    delete values.pending_email;
     return values;
   };
 
