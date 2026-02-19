@@ -4,7 +4,7 @@ const jwtConfig = require('../config/jwt');
 const { successResponse, errorResponse } = require('../utils/responseUtils');
 const logger = require('../config/logger');
 const emailService = require('../services/emailService');
-const { getVerificationSuccessPage, getVerificationErrorPage } = require('../templates/verificationPage');
+const { getVerificationSuccessPage, getVerificationErrorPage, getVerificationConfirmPage } = require('../templates/verificationPage');
 const { getPasswordResetFormPage, getPasswordResetSuccessPage, getPasswordResetErrorPage } = require('../templates/passwordResetPage');
 
 /**
@@ -282,8 +282,11 @@ exports.logout = async (req, res, next) => {
 
 /**
  * GET /auth/verify-email/:token
- * Verificar email del usuario con el token recibido por correo
- * Devuelve una página HTML bonita en lugar de JSON
+ * Muestra página de confirmación de verificación
+ *
+ * NO verifica el email directamente. Esto previene que bots de email
+ * (link preview, escaneo de seguridad) consuman el token antes de que
+ * el usuario haga clic. La verificación real ocurre en el POST.
  */
 exports.verifyEmail = async (req, res, next) => {
   try {
@@ -293,7 +296,52 @@ exports.verifyEmail = async (req, res, next) => {
       return res.status(400).send(getVerificationErrorPage('Token de verificación requerido'));
     }
 
-    logger.auth('Intento de verificación de email', { token: token.substring(0, 10) + '...', ip: req.ip });
+    logger.auth('Página de confirmación de verificación', {
+      tokenPrefix: token.substring(0, 10) + '...',
+      ip: req.ip,
+    });
+
+    // Verificar que el token existe (sin consumirlo)
+    const user = await User.findOne({
+      where: { verification_token: token }
+    });
+
+    if (!user) {
+      return res.status(400).send(getVerificationErrorPage('Token de verificación inválido o expirado'));
+    }
+
+    if (!user.isVerificationTokenValid(token)) {
+      return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
+    }
+
+    // Mostrar página de confirmación con botón que hace POST
+    return res.status(200).send(getVerificationConfirmPage(token));
+
+  } catch (error) {
+    logger.error('Error mostrando página de verificación', { error: error.message });
+    return res.status(500).send(getVerificationErrorPage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.'));
+  }
+};
+
+/**
+ * POST /auth/verify-email
+ * Confirma la verificación del email (acción real)
+ *
+ * Se ejecuta cuando el usuario hace clic en "Confirmar verificación"
+ * en la página mostrada por el GET. Esto asegura que es una acción humana.
+ */
+exports.confirmVerifyEmail = async (req, res, next) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(400).send(getVerificationErrorPage('Token de verificación requerido'));
+    }
+
+    logger.auth('Confirmación de verificación de email', {
+      tokenPrefix: token.substring(0, 10) + '...',
+      ip: req.ip,
+    });
 
     // Buscar usuario por token de verificación
     const user = await User.findOne({
@@ -301,7 +349,10 @@ exports.verifyEmail = async (req, res, next) => {
     });
 
     if (!user) {
-      logger.security('Token de verificación inválido', { token: token.substring(0, 10) + '...', ip: req.ip });
+      logger.security('Token de verificación no encontrado', {
+        tokenPrefix: token.substring(0, 10) + '...',
+        ip: req.ip,
+      });
       return res.status(400).send(getVerificationErrorPage('Token de verificación inválido o expirado'));
     }
 
@@ -310,7 +361,7 @@ exports.verifyEmail = async (req, res, next) => {
       logger.security('Token de verificación expirado', {
         userId: user.id,
         username: user.username,
-        ip: req.ip
+        ip: req.ip,
       });
       return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
     }
@@ -325,7 +376,7 @@ exports.verifyEmail = async (req, res, next) => {
       userId: user.id,
       username: user.username,
       email: user.email,
-      ip: req.ip
+      ip: req.ip,
     });
 
     // Devolver página HTML de éxito
@@ -643,6 +694,22 @@ exports.updateProfile = async (req, res, next) => {
       const verificationToken = user.generateVerificationToken();
       await user.save();
 
+      // Verificar que el token se guardó correctamente en la BD
+      const savedUser = await User.findByPk(user.id);
+      if (!savedUser.verification_token || savedUser.verification_token !== verificationToken) {
+        logger.error('Token de verificación NO se guardó correctamente', {
+          userId: user.id,
+          tokenGenerated: verificationToken.substring(0, 10) + '...',
+          tokenInDB: savedUser.verification_token ? savedUser.verification_token.substring(0, 10) + '...' : 'NULL',
+        });
+      } else {
+        logger.auth('Token de verificación guardado correctamente', {
+          userId: user.id,
+          tokenPrefix: verificationToken.substring(0, 10) + '...',
+          expires: savedUser.verification_token_expires,
+        });
+      }
+
       const emailSent = await emailService.sendEmailChangeVerification(user, verificationToken);
       if (emailSent) {
         logger.auth('Email de verificación de cambio enviado al nuevo correo', {
@@ -715,28 +782,19 @@ exports.updateAvatar = async (req, res, next) => {
     user.avatar_base64 = avatar;
     await user.save();
 
-    // Verificar que realmente se guardó leyendo de la BD
-    const savedUser = await User.findByPk(req.userId);
-    const avatarSaved = savedUser.avatar_base64 ? savedUser.avatar_base64.length : 0;
-    const avatarSent = avatar.length;
-    logger.auth('Avatar actualizado', {
-      userId: user.id,
-      avatarSentLength: avatarSent,
-      avatarSavedLength: avatarSaved,
-      match: avatarSent === avatarSaved
-    });
+    logger.auth('Avatar actualizado', { userId: user.id });
 
     return successResponse(res, {
       user: {
-        id: savedUser.id,
-        username: savedUser.username,
-        email: savedUser.email,
-        email_verified: savedUser.email_verified,
-        is_premium: savedUser.is_premium,
-        created_at: savedUser.created_at,
-        last_login: savedUser.last_login,
-        streak_days: savedUser.streak_days,
-        avatar_base64: savedUser.avatar_base64 || null
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        email_verified: user.email_verified,
+        is_premium: user.is_premium,
+        created_at: user.created_at,
+        last_login: user.last_login,
+        streak_days: user.streak_days,
+        avatar_base64: user.avatar_base64 || null
       }
     }, 'Avatar actualizado exitosamente');
 

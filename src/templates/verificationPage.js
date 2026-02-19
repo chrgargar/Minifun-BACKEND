@@ -341,7 +341,160 @@ const getVerificationErrorPage = (errorMessage) => {
   `.trim();
 };
 
+/**
+ * Página de confirmación de verificación
+ * El GET muestra esta página; el usuario hace clic en el botón para confirmar (POST)
+ * Esto previene que bots de email pre-fetch consuman el token
+ * @param {string} token - Token de verificación
+ * @returns {string} HTML de la página
+ */
+const getVerificationConfirmPage = (token) => {
+  return `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verificar Email - MINIFUN</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px;
+    }
+
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 48px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.6s ease-out;
+    }
+
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .icon {
+      width: 100px;
+      height: 100px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 24px;
+    }
+
+    .icon svg {
+      width: 50px;
+      height: 50px;
+      color: white;
+    }
+
+    h1 {
+      color: #1f2937;
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+
+    p {
+      color: #6b7280;
+      font-size: 16px;
+      line-height: 1.6;
+      margin-bottom: 32px;
+    }
+
+    .verify-btn {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+      border: none;
+      padding: 16px 48px;
+      border-radius: 12px;
+      font-size: 18px;
+      font-weight: 600;
+      font-family: 'Poppins', sans-serif;
+      cursor: pointer;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .verify-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    }
+
+    .verify-btn:active {
+      transform: translateY(0);
+    }
+
+    .verify-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .footer {
+      margin-top: 32px;
+      color: #9ca3af;
+      font-size: 14px;
+    }
+
+    .logo {
+      font-size: 32px;
+      margin-bottom: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="logo">🎮</div>
+    <div class="icon">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+        <polyline points="22,6 12,13 2,6"></polyline>
+      </svg>
+    </div>
+    <h1>Verificar Email</h1>
+    <p>Haz clic en el botón para confirmar la verificación de tu correo electrónico.</p>
+    <form method="POST" action="/api/auth/verify-email">
+      <input type="hidden" name="token" value="${token}">
+      <button type="submit" class="verify-btn" id="verifyBtn" onclick="this.disabled=true;this.textContent='Verificando...';this.form.submit();">
+        ✓ Confirmar verificación
+      </button>
+    </form>
+    <div class="footer">
+      © ${new Date().getFullYear()} MINIFUN - Aprende jugando
+    </div>
+  </div>
+</body>
+</html>
+  `.trim();
+};
+
 module.exports = {
   getVerificationSuccessPage,
-  getVerificationErrorPage
+  getVerificationErrorPage,
+  getVerificationConfirmPage
 };

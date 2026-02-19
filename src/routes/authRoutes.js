@@ -47,15 +47,27 @@ router.post(
 
 /**
  * GET /auth/verify-email/:token
- * Verificar email con token recibido por correo
+ * Muestra página de confirmación de verificación
  *
- * Ruta pública (no requiere autenticación)
- * Rate limit: 5 intentos por 15 minutos
+ * NO verifica directamente - previene que bots de email consuman el token.
+ * El usuario debe hacer clic en "Confirmar" para verificar (POST).
  */
 router.get(
   '/verify-email/:token',
   authLimiter,
   authController.verifyEmail
+);
+
+/**
+ * POST /auth/verify-email
+ * Confirma la verificación del email (acción real)
+ *
+ * Se ejecuta cuando el usuario hace clic en "Confirmar verificación"
+ */
+router.post(
+  '/verify-email',
+  authLimiter,
+  authController.confirmVerifyEmail
 );
 
 /**
