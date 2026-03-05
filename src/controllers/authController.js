@@ -36,19 +36,29 @@ exports.register = async (req, res, next) => {
       });
 
       if (existingEmail) {
-        // Si el email existe pero NO está verificado, eliminar ese usuario
-        // para permitir que otro se registre con el mismo email
-        if (!existingEmail.email_verified) {
-          logger.auth('Eliminando usuario con email no verificado para permitir nuevo registro', {
-            oldUserId: existingEmail.id,
-            oldUsername: existingEmail.username,
-            email: email
-          });
-          await existingEmail.destroy();
-        } else {
+        if (existingEmail.email_verified) {
           // El email está verificado, no se puede usar
           return errorResponse(res, 'El email ya está en uso', 409);
         }
+
+        // El email existe pero no está verificado.
+        // Solo permitir re-registro si el token de verificación ha expirado
+        // (es decir, el usuario original ya tuvo su oportunidad de verificar).
+        const tokenExpired = !existingEmail.verification_token_expires ||
+          new Date() > new Date(existingEmail.verification_token_expires);
+
+        if (!tokenExpired) {
+          // El token sigue vigente: el usuario original puede verificarse todavía
+          return errorResponse(res, 'El email ya está en uso', 409);
+        }
+
+        // Token expirado: el registro anterior quedó abandonado, se puede reclamar el email
+        logger.auth('Eliminando usuario con token de verificación expirado para permitir nuevo registro', {
+          oldUserId: existingEmail.id,
+          oldUsername: existingEmail.username,
+          email: email
+        });
+        await existingEmail.destroy();
       }
     }
 
