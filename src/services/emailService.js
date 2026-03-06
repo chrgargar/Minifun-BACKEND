@@ -79,42 +79,20 @@ class EmailService {
    * @returns {Promise<boolean>} true si el email se envió correctamente
    */
   async sendVerificationEmail(user, verificationToken) {
-    if (!this.isConfigured) {
-      logger.warn(`No se pudo enviar email de verificación a ${user.email}: Servicio no configurado`);
-      return false;
-    }
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
 
-    try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
+    const htmlContent = getVerificationEmailTemplate(user.username, verificationUrl);
+    const textContent = this._generatePlainTextVersion(user.username, verificationUrl);
 
-      const htmlContent = getVerificationEmailTemplate(user.username, verificationUrl);
-      const textContent = this._generatePlainTextVersion(user.username, verificationUrl);
-
-      // Enviar email con Resend
-      const response = await this.resend.emails.send({
-        from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
-        to: [user.email],
-        subject: '✓ Verifica tu cuenta de MINIFUN',
-        html: htmlContent,
-        text: textContent,
-      });
-
-      // Resend retorna un objeto con id si fue exitoso
-      if (response.data && response.data.id) {
-        logger.info(`✅ Email de verificación enviado a ${user.email}`, {
-          emailId: response.data.id,
-          userId: user.id,
-        });
-        return true;
-      } else {
-        logger.error(`❌ Error al enviar email a ${user.email}:`, response.error);
-        return false;
-      }
-    } catch (error) {
-      logger.error(`❌ Error al enviar email de verificación a ${user.email}:`, error);
-      return false;
-    }
+    return this._sendEmail({
+      to: user.email,
+      subject: '✓ Verifica tu cuenta de MINIFUN',
+      html: htmlContent,
+      text: textContent,
+      logContext: 'verificación',
+      userId: user.id,
+    });
   }
 
   /**
@@ -146,43 +124,67 @@ Si no creaste una cuenta en MINIFUN, puedes ignorar este correo de forma segura.
   }
 
   /**
-   * Envía el email de verificación cuando el usuario cambia su email
+   * Método privado centralizado para enviar emails
+   * Evita duplicación de código entre los diferentes tipos de email
+   *
+   * @param {Object} params - Parámetros del email
+   * @param {string} params.to - Destinatario
+   * @param {string} params.subject - Asunto del email
+   * @param {string} params.html - Contenido HTML
+   * @param {string} params.text - Contenido en texto plano
+   * @param {string} params.logContext - Contexto para logging (ej: "verificación", "reset")
+   * @param {string} params.userId - ID del usuario para logging
+   * @returns {Promise<boolean>} true si el email se envió correctamente
    */
-  async sendEmailChangeVerification(user, verificationToken) {
+  async _sendEmail({ to, subject, html, text, logContext, userId }) {
     if (!this.isConfigured) {
-      logger.warn(`No se pudo enviar email de cambio a ${user.email}: Servicio no configurado`);
+      logger.warn(`No se pudo enviar email de ${logContext} a ${to}: Servicio no configurado`);
       return false;
     }
 
     try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
-
-      const htmlContent = getEmailChangeVerificationTemplate(user.username, verificationUrl);
-      const textContent = getEmailChangePlainText(user.username, verificationUrl);
-
       const response = await this.resend.emails.send({
         from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
-        to: [user.email],
-        subject: '📧 Verifica tu nuevo email - MINIFUN',
-        html: htmlContent,
-        text: textContent,
+        to: [to],
+        subject,
+        html,
+        text,
       });
 
       if (response.data && response.data.id) {
-        logger.info(`✅ Email de cambio de correo enviado a ${user.email}`, {
+        logger.info(`✅ Email de ${logContext} enviado a ${to}`, {
           emailId: response.data.id,
-          userId: user.id,
+          userId,
         });
         return true;
       } else {
-        logger.error(`❌ Error al enviar email de cambio a ${user.email}:`, response.error);
+        logger.error(`❌ Error al enviar email de ${logContext} a ${to}:`, response.error);
         return false;
       }
     } catch (error) {
-      logger.error(`❌ Error al enviar email de cambio a ${user.email}:`, error);
+      logger.error(`❌ Error al enviar email de ${logContext} a ${to}:`, error);
       return false;
     }
+  }
+
+  /**
+   * Envía el email de verificación cuando el usuario cambia su email
+   */
+  async sendEmailChangeVerification(user, verificationToken) {
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const verificationUrl = `${frontendUrl}/api/auth/verify-email/${verificationToken}`;
+
+    const htmlContent = getEmailChangeVerificationTemplate(user.username, verificationUrl);
+    const textContent = getEmailChangePlainText(user.username, verificationUrl);
+
+    return this._sendEmail({
+      to: user.email,
+      subject: '📧 Verifica tu nuevo email - MINIFUN',
+      html: htmlContent,
+      text: textContent,
+      logContext: 'cambio de correo',
+      userId: user.id,
+    });
   }
 
   /**
@@ -196,42 +198,20 @@ Si no creaste una cuenta en MINIFUN, puedes ignorar este correo de forma segura.
    * @returns {Promise<boolean>} true si el email se envió correctamente
    */
   async sendPasswordResetEmail(user, resetToken) {
-    if (!this.isConfigured) {
-      logger.warn(`No se pudo enviar email de reset a ${user.email}: Servicio no configurado`);
-      return false;
-    }
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+    const resetUrl = `${frontendUrl}/api/auth/reset-password/${resetToken}`;
 
-    try {
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
-      const resetUrl = `${frontendUrl}/api/auth/reset-password/${resetToken}`;
+    const htmlContent = getPasswordResetEmailTemplate(user.username, resetUrl);
+    const textContent = getPasswordResetPlainText(user.username, resetUrl);
 
-      const htmlContent = getPasswordResetEmailTemplate(user.username, resetUrl);
-      const textContent = getPasswordResetPlainText(user.username, resetUrl);
-
-      // Enviar email con Resend
-      const response = await this.resend.emails.send({
-        from: process.env.EMAIL_FROM || 'MINIFUN <onboarding@resend.dev>',
-        to: [user.email],
-        subject: '🔐 Recupera tu contraseña de MINIFUN',
-        html: htmlContent,
-        text: textContent,
-      });
-
-      // Resend retorna un objeto con id si fue exitoso
-      if (response.data && response.data.id) {
-        logger.info(`✅ Email de reset de contraseña enviado a ${user.email}`, {
-          emailId: response.data.id,
-          userId: user.id,
-        });
-        return true;
-      } else {
-        logger.error(`❌ Error al enviar email de reset a ${user.email}:`, response.error);
-        return false;
-      }
-    } catch (error) {
-      logger.error(`❌ Error al enviar email de reset a ${user.email}:`, error);
-      return false;
-    }
+    return this._sendEmail({
+      to: user.email,
+      subject: '🔐 Recupera tu contraseña de MINIFUN',
+      html: htmlContent,
+      text: textContent,
+      logContext: 'reset de contraseña',
+      userId: user.id,
+    });
   }
 }
 

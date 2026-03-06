@@ -1,8 +1,10 @@
+const logger = require('../config/logger');
+
 /**
  * Middleware global de manejo de errores
  */
 exports.errorHandler = (err, req, res, next) => {
-  console.error('❌ Error:', err);
+  logger.error('❌ Error:', err);
 
   // Error de Sequelize - Validación
   if (err.name === 'SequelizeValidationError') {
