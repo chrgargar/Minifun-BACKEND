@@ -2,9 +2,11 @@ const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 
 const routes = require('./routes');
+const adminRoutes = require('./routes/adminRoutes');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const { generalLimiter } = require('./middlewares/rateLimiter');
 const logger = require('./config/logger');
@@ -43,6 +45,9 @@ app.use(morgan(morganFormat, {
 
 // ==================== BODY PARSERS ====================
 
+// Cookie parser para sesiones de admin
+app.use(cookieParser());
+
 // JSON y URL-encoded parsers con límites de tamaño para prevenir DoS
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
@@ -51,6 +56,9 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rutas principales de la API
 app.use('/api', routes);
+
+// Panel de administración (web)
+app.use('/admin/logs', adminRoutes);
 
 // Ruta raíz: información básica de la API
 app.get('/', (req, res) => {

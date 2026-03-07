@@ -120,7 +120,10 @@ const devLimiter = rateLimit({
 /**
  * Exporta el limiter apropiado según el entorno
  */
-const isDevelopment = process.env.NODE_ENV === 'development';
+// TODO: Cambiar a false cuando termines de testear
+const TESTING_MODE = true;
+
+const isDevelopment = process.env.NODE_ENV === 'development' || TESTING_MODE;
 
 module.exports = {
   generalLimiter: isDevelopment ? devLimiter : generalLimiter,
