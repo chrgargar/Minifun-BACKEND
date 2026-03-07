@@ -649,23 +649,7 @@ function generateLogsPage(adminUser, users = [], selectedUser = null, logs = nul
             </a>
           </div>
           <div class="log-content">
-            ${logContent.lines.map(line => {
-              if (line.startsWith('#')) {
-                return '<div class="log-line log-comment">' + escapeHtml(line) + '</div>';
-              }
-
-              const levelMatch = line.match(/\\[(DEBUG|INFO|WARNING|ERROR|FATAL)\\]/);
-              const level = levelMatch ? levelMatch[1] : null;
-
-              let formattedLine = escapeHtml(line);
-              formattedLine = formattedLine.replace(/\\[([^\\]]+)\\]/, '<span class="log-timestamp">[$1]</span>');
-              if (level) {
-                formattedLine = formattedLine.replace(/\\[(DEBUG|INFO|WARNING|ERROR|FATAL)\\]/, '<span class="log-level ' + level + '">' + level + '</span>');
-              }
-              formattedLine = formattedLine.replace(/(\\{[^}]+\\})/g, '<span class="log-meta">$1</span>');
-
-              return '<div class="log-line">' + formattedLine + '</div>';
-            }).join('')}
+            ${logContent.lines.map(line => formatLogLine(line)).join('')}
           </div>
         ` : logs && logs.length > 0 ? `
           <div class="empty-state">
@@ -695,6 +679,33 @@ function escapeHtml(text) {
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
+}
+
+function formatLogLine(line) {
+  if (line.startsWith('#')) {
+    return '<div class="log-line log-comment">' + escapeHtml(line) + '</div>';
+  }
+
+  const levelMatch = line.match(/\[(DEBUG|INFO|WARNING|ERROR|FATAL)\]/);
+  const level = levelMatch ? levelMatch[1] : null;
+
+  let formattedLine = escapeHtml(line);
+
+  // Highlight timestamp
+  formattedLine = formattedLine.replace(/\[([^\]]+)\]/, '<span class="log-timestamp">[$1]</span>');
+
+  // Highlight level
+  if (level) {
+    formattedLine = formattedLine.replace(
+      /\[(DEBUG|INFO|WARNING|ERROR|FATAL)\]/,
+      '<span class="log-level ' + level + '">' + level + '</span>'
+    );
+  }
+
+  // Highlight JSON metadata
+  formattedLine = formattedLine.replace(/(\{[^}]+\})/g, '<span class="log-meta">$1</span>');
+
+  return '<div class="log-line">' + formattedLine + '</div>';
 }
 
 // Middleware para verificar sesión admin
