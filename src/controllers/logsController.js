@@ -1,7 +1,9 @@
-const { Log, User } = require('../models');
+const { User } = require('../models');
+const fileLogService = require('../services/fileLogService');
 const { successResponse, errorResponse } = require('../utils/responseUtils');
 const logger = require('../config/logger');
-const { Op } = require('sequelize');
+const path = require('path');
+const fs = require('fs');
 
 /**
  * Recibir logs del frontend (batch)
@@ -16,23 +18,11 @@ exports.receiveLogs = async (req, res) => {
       return errorResponse(res, 'No se proporcionaron logs válidos', 400);
     }
 
-    // Preparar logs para inserción masiva
-    const logsToInsert = logs.map(log => ({
-      user_id: userId,
-      level: log.level || 'info',
-      message: log.message,
-      metadata: log.metadata || null,
-      device_info: deviceInfo || null,
-      app_version: appVersion || null,
-      client_timestamp: log.timestamp ? new Date(log.timestamp) : null
-    }));
+    const result = await fileLogService.writeLogs(userId, logs, { deviceInfo, appVersion });
 
-    // Insertar en batch
-    await Log.bulkCreate(logsToInsert);
+    logger.info(`Recibidos ${result.written} logs del usuario ${userId}`);
 
-    logger.info(`Recibidos ${logs.length} logs del usuario ${userId}`);
-
-    return successResponse(res, { received: logs.length }, 'Logs recibidos correctamente');
+    return successResponse(res, result, 'Logs recibidos correctamente');
   } catch (error) {
     logger.error('Error al recibir logs', error);
     return errorResponse(res, 'Error al procesar logs', 500);
@@ -40,142 +30,130 @@ exports.receiveLogs = async (req, res) => {
 };
 
 /**
- * Obtener logs de un usuario específico (solo admin)
- * GET /api/admin/logs/:userId
+ * Listar usuarios con logs (solo admin)
+ * GET /api/logs/admin/users
  */
-exports.getUserLogs = async (req, res) => {
+exports.getUsersWithLogs = async (req, res) => {
   try {
-    const { userId } = req.params;
-    const {
-      level,
-      startDate,
-      endDate,
-      page = 1,
-      limit = 100,
-      search
-    } = req.query;
+    const usersWithLogs = await fileLogService.listUsersWithLogs();
 
-    // Verificar que el usuario existe
-    const user = await User.findByPk(userId);
-    if (!user) {
-      return errorResponse(res, 'Usuario no encontrado', 404);
-    }
-
-    // Construir filtros
-    const where = { user_id: userId };
-
-    if (level) {
-      where.level = level;
-    }
-
-    if (startDate || endDate) {
-      where.created_at = {};
-      if (startDate) {
-        where.created_at[Op.gte] = new Date(startDate);
-      }
-      if (endDate) {
-        where.created_at[Op.lte] = new Date(endDate);
-      }
-    }
-
-    if (search) {
-      where.message = { [Op.like]: `%${search}%` };
-    }
-
-    // Calcular offset
-    const offset = (parseInt(page) - 1) * parseInt(limit);
-
-    // Obtener logs con paginación
-    const { count, rows: logs } = await Log.findAndCountAll({
-      where,
-      order: [['created_at', 'DESC']],
-      limit: parseInt(limit),
-      offset
-    });
-
-    return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email
-      },
-      logs,
-      pagination: {
-        total: count,
-        page: parseInt(page),
-        limit: parseInt(limit),
-        totalPages: Math.ceil(count / parseInt(limit))
-      }
-    });
-  } catch (error) {
-    logger.error('Error al obtener logs del usuario', error);
-    return errorResponse(res, 'Error al obtener logs', 500);
-  }
-};
-
-/**
- * Listar todos los usuarios con sus estadísticas de logs (solo admin)
- * GET /api/admin/logs/users
- */
-exports.getUsersWithLogStats = async (req, res) => {
-  try {
+    // Obtener info de usuarios desde la BD
+    const userIds = usersWithLogs.map(u => u.userId);
     const users = await User.findAll({
-      attributes: ['id', 'username', 'email', 'role', 'created_at', 'last_login'],
-      include: [{
-        model: Log,
-        as: 'logs',
-        attributes: []
-      }],
-      group: ['User.id'],
-      raw: true
+      where: { id: userIds },
+      attributes: ['id', 'username', 'email']
     });
 
-    // Obtener conteo de logs por usuario
-    const usersWithStats = await Promise.all(users.map(async (user) => {
-      const logCount = await Log.count({ where: { user_id: user.id } });
-      const lastLog = await Log.findOne({
-        where: { user_id: user.id },
-        order: [['created_at', 'DESC']],
-        attributes: ['created_at']
-      });
+    const userMap = {};
+    users.forEach(u => {
+      userMap[u.id] = { username: u.username, email: u.email };
+    });
 
-      return {
-        ...user,
-        logCount,
-        lastLogAt: lastLog?.created_at || null
-      };
+    const result = usersWithLogs.map(u => ({
+      ...u,
+      username: userMap[u.userId]?.username || 'Unknown',
+      email: userMap[u.userId]?.email || null
     }));
 
-    return successResponse(res, { users: usersWithStats });
+    return successResponse(res, { users: result });
   } catch (error) {
-    logger.error('Error al obtener usuarios con estadísticas', error);
+    logger.error('Error al listar usuarios con logs', error);
     return errorResponse(res, 'Error al obtener usuarios', 500);
   }
 };
 
 /**
- * Eliminar logs antiguos (solo admin)
- * DELETE /api/admin/logs/cleanup
+ * Listar archivos de log de un usuario (solo admin)
+ * GET /api/logs/admin/:userId
+ */
+exports.listUserLogs = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    // Verificar que el usuario existe
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'email']
+    });
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    const logs = await fileLogService.listUserLogs(userId);
+
+    return successResponse(res, {
+      user: { id: user.id, username: user.username, email: user.email },
+      logs
+    });
+  } catch (error) {
+    logger.error('Error al listar logs del usuario', error);
+    return errorResponse(res, 'Error al obtener logs', 500);
+  }
+};
+
+/**
+ * Ver contenido de un log específico (solo admin)
+ * GET /api/logs/admin/:userId/:date
+ */
+exports.readUserLog = async (req, res) => {
+  try {
+    const { userId, date } = req.params;
+
+    // Validar formato de fecha
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return errorResponse(res, 'Formato de fecha inválido. Usar YYYY-MM-DD', 400);
+    }
+
+    const logData = await fileLogService.readLogs(userId, date);
+
+    return successResponse(res, logData);
+  } catch (error) {
+    logger.error('Error al leer log', error);
+    return errorResponse(res, 'Error al leer log', 500);
+  }
+};
+
+/**
+ * Descargar archivo de log (solo admin)
+ * GET /api/logs/admin/:userId/:date/download
+ */
+exports.downloadLog = async (req, res) => {
+  try {
+    const { userId, date } = req.params;
+
+    // Validar formato de fecha
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      return errorResponse(res, 'Formato de fecha inválido. Usar YYYY-MM-DD', 400);
+    }
+
+    const filePath = fileLogService.getLogFilePath(userId, date);
+
+    if (!fs.existsSync(filePath)) {
+      return errorResponse(res, 'Archivo de log no encontrado', 404);
+    }
+
+    const filename = `user_${userId}_${date}.log`;
+    res.download(filePath, filename);
+  } catch (error) {
+    logger.error('Error al descargar log', error);
+    return errorResponse(res, 'Error al descargar log', 500);
+  }
+};
+
+/**
+ * Limpiar logs antiguos (solo admin)
+ * DELETE /api/logs/admin/cleanup
  */
 exports.cleanupOldLogs = async (req, res) => {
   try {
-    const { daysToKeep = 30 } = req.body;
+    const deleted = await fileLogService.cleanupOldLogs();
 
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - parseInt(daysToKeep));
-
-    const deleted = await Log.destroy({
-      where: {
-        created_at: { [Op.lt]: cutoffDate }
-      }
-    });
-
-    logger.info(`Eliminados ${deleted} logs anteriores a ${cutoffDate.toISOString()}`);
+    logger.info(`Limpieza de logs: ${deleted} archivos eliminados`);
 
     return successResponse(res, {
       deleted,
-      cutoffDate: cutoffDate.toISOString()
-    }, `Se eliminaron ${deleted} logs antiguos`);
+      retentionDays: fileLogService.RETENTION_DAYS
+    }, `Se eliminaron ${deleted} archivos de log antiguos`);
   } catch (error) {
     logger.error('Error al limpiar logs', error);
     return errorResponse(res, 'Error al limpiar logs', 500);

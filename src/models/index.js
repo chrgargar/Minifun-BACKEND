@@ -17,11 +17,6 @@ const sequelize = new Sequelize(
 );
 
 const User = require('./User')(sequelize);
-const Log = require('./Log')(sequelize);
-
-// Relaciones
-User.hasMany(Log, { foreignKey: 'user_id', as: 'logs' });
-Log.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Función para sincronizar base de datos
 async function syncDatabase() {
@@ -50,6 +45,5 @@ async function syncDatabase() {
 module.exports = {
   sequelize,
   User,
-  Log,
   syncDatabase
 };
