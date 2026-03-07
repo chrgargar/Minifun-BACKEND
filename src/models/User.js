@@ -94,6 +94,11 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING(100),
       allowNull: true,
       field: 'pending_email'
+    },
+    role: {
+      type: DataTypes.ENUM('user', 'admin'),
+      defaultValue: 'user',
+      allowNull: false
     }
   }, {
     tableName: 'users',

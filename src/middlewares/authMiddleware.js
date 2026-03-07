@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
 const { errorResponse } = require('../utils/responseUtils');
+const { User } = require('../models');
 
 /**
  * Middleware para verificar JWT
@@ -57,5 +58,28 @@ exports.optionalAuth = (req, res, next) => {
 
   } catch (error) {
     next();
+  }
+};
+
+/**
+ * Middleware para verificar que el usuario es admin
+ * Debe usarse DESPUÉS de authenticateToken
+ */
+exports.isAdmin = async (req, res, next) => {
+  try {
+    const user = await User.findByPk(req.userId);
+
+    if (!user) {
+      return errorResponse(res, 'Usuario no encontrado', 404);
+    }
+
+    if (user.role !== 'admin') {
+      return errorResponse(res, 'Acceso denegado. Se requiere rol de administrador', 403);
+    }
+
+    req.user = user;
+    next();
+  } catch (error) {
+    return errorResponse(res, 'Error al verificar permisos', 500);
   }
 };
