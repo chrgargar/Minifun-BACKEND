@@ -121,6 +121,7 @@ exports.register = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -225,6 +226,7 @@ exports.login = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -257,6 +259,7 @@ exports.getMe = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -649,6 +652,7 @@ exports.refreshToken = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -742,6 +746,7 @@ exports.updateProfile = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -797,6 +802,7 @@ exports.updateAvatar = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
@@ -833,6 +839,7 @@ exports.deleteAvatar = async (req, res, next) => {
         email: user.email,
         email_verified: user.email_verified,
         is_premium: user.is_premium,
+        is_admin: user.is_admin,
         created_at: user.created_at,
         last_login: user.last_login,
         streak_days: user.streak_days
