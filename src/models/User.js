@@ -40,6 +40,11 @@ module.exports = (sequelize) => {
       defaultValue: false,
       field: 'is_premium'
     },
+    is_admin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      field: 'is_admin'
+    },
     last_login: {
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
