@@ -410,8 +410,8 @@ input:focus {
 ============================================ */
 .footer,
 footer {
-  margin-top: 20px;
-  color: rgba(255, 255, 255, 0.7);
+  margin-top: 24px;
+  color: var(--text-light-gray);
   font-size: 13px;
   text-align: center;
 }
