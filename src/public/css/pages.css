@@ -63,6 +63,7 @@ body {
   font-family: 'Poppins', sans-serif;
   min-height: 100vh;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 20px;
@@ -407,10 +408,12 @@ input:focus {
 /* ============================================
    FOOTER & LOGO
 ============================================ */
-.footer {
-  margin-top: 32px;
-  color: var(--text-light-gray);
-  font-size: 14px;
+.footer,
+footer {
+  margin-top: 20px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  text-align: center;
 }
 
 .logo {
