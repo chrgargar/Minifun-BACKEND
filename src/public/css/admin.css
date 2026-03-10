@@ -505,10 +505,15 @@ body {
   color: var(--text-primary);
 }
 
-.log-comment {
+.log-comment,
+.log-line.level-comment {
   color: var(--text-secondary);
   font-style: italic;
   opacity: 0.7;
+}
+
+.log-line.level-comment .log-message {
+  color: var(--text-secondary);
 }
 
 /* ============================================

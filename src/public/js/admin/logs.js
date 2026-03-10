@@ -46,6 +46,18 @@
      */
     function formatLogLine(line) {
         if (typeof line === 'string') {
+            // Check if it's a comment line (starts with #)
+            if (line.trim().startsWith('#')) {
+                return {
+                    timestamp: '',
+                    level: '',
+                    message: line,
+                    metadata: '',
+                    levelClass: 'level-comment',
+                    isComment: true
+                };
+            }
+
             // Parse string log format: [timestamp] [level] message {metadata}
             const timestampMatch = line.match(/^\[([^\]]+)\]/);
             const levelMatch = line.match(/\[(INFO|WARN|ERROR|DEBUG)\]/i);
@@ -60,7 +72,8 @@
                     .replace(/\{[^}]+\}$/, '')
                     .trim(),
                 metadata: metadataMatch ? metadataMatch[0] : '',
-                levelClass: getLevelClass(levelMatch ? levelMatch[1] : 'info')
+                levelClass: getLevelClass(levelMatch ? levelMatch[1] : 'info'),
+                isComment: false
             };
         }
 
@@ -70,7 +83,8 @@
             level: (line.level || 'INFO').toUpperCase(),
             message: line.message || line.msg || '',
             metadata: line.metadata ? JSON.stringify(line.metadata) : '',
-            levelClass: getLevelClass(line.level || 'info')
+            levelClass: getLevelClass(line.level || 'info'),
+            isComment: false
         };
     }
 
@@ -245,19 +259,21 @@
     }
 
     /**
-     * Format date for display
+     * Format date for display (YYYY-MM-DD)
      * @param {string} dateStr - Date string
      * @returns {string} Formatted date
      */
     function formatDate(dateStr) {
+        // If already in YYYY-MM-DD format, return as-is
+        if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+            return dateStr;
+        }
         try {
             const date = new Date(dateStr);
-            return date.toLocaleDateString('en-US', {
-                weekday: 'short',
-                month: 'short',
-                day: 'numeric',
-                year: 'numeric'
-            });
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         } catch {
             return dateStr;
         }
@@ -332,15 +348,25 @@
             const logLine = template.querySelector('.log-line');
 
             logLine.classList.add(formatted.levelClass);
-            logLine.querySelector('.log-timestamp').textContent = escapeHtml(formatted.timestamp);
-            logLine.querySelector('.log-level').textContent = escapeHtml(formatted.level);
-            logLine.querySelector('.log-message').textContent = escapeHtml(formatted.message);
 
-            const metadataEl = logLine.querySelector('.log-metadata');
-            if (formatted.metadata) {
-                metadataEl.textContent = escapeHtml(formatted.metadata);
+            // Handle comment lines differently
+            if (formatted.isComment) {
+                logLine.querySelector('.log-timestamp').remove();
+                logLine.querySelector('.log-level').remove();
+                logLine.querySelector('.log-message').textContent = escapeHtml(formatted.message);
+                const metadataEl = logLine.querySelector('.log-metadata');
+                if (metadataEl) metadataEl.remove();
             } else {
-                metadataEl.remove();
+                logLine.querySelector('.log-timestamp').textContent = escapeHtml(formatted.timestamp);
+                logLine.querySelector('.log-level').textContent = escapeHtml(formatted.level);
+                logLine.querySelector('.log-message').textContent = escapeHtml(formatted.message);
+
+                const metadataEl = logLine.querySelector('.log-metadata');
+                if (formatted.metadata) {
+                    metadataEl.textContent = escapeHtml(formatted.metadata);
+                } else {
+                    metadataEl.remove();
+                }
             }
 
             linesContainer.appendChild(template);
@@ -356,7 +382,7 @@
      */
     function calculateStats(lines) {
         const stats = {
-            total: lines.length,
+            total: 0,
             errors: 0,
             warnings: 0,
             info: 0,
@@ -365,6 +391,13 @@
 
         lines.forEach(line => {
             const formatted = formatLogLine(line);
+
+            // Skip comment lines in stats
+            if (formatted.isComment) {
+                return;
+            }
+
+            stats.total++;
             const level = formatted.level.toLowerCase();
 
             if (level === 'error' || level === 'err') {
