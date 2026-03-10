@@ -161,15 +161,16 @@
             const template = templates.userItem.content.cloneNode(true);
             const item = template.querySelector('.user-item');
 
-            item.dataset.userId = user.id || user._id;
+            const oderId = user.userId || user.id || user._id;
+            item.dataset.userId = oderId;
             item.querySelector('.user-name').textContent = escapeHtml(user.username || user.email || user.name || 'Unknown');
             item.querySelector('.user-log-count').textContent = user.logCount ? `${user.logCount} logs` : '';
 
-            if (String(user.id || user._id) === String(selectedUserId)) {
+            if (String(oderId) === String(selectedUserId)) {
                 item.classList.add('selected');
             }
 
-            item.addEventListener('click', () => handleUserClick(user.id || user._id));
+            item.addEventListener('click', () => handleUserClick(oderId));
 
             usersList.appendChild(template);
         });
