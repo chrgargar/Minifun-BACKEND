@@ -146,6 +146,12 @@
     function renderUsers(users, selectedUserId) {
         usersList.innerHTML = '';
 
+        // Update user count badge
+        const userCountEl = document.getElementById('userCount');
+        if (userCountEl) {
+            userCountEl.textContent = users ? users.length : 0;
+        }
+
         if (!users || users.length === 0) {
             usersList.innerHTML = '<p class="no-users">No users with logs</p>';
             return;

@@ -8,18 +8,24 @@
 </head>
 <body>
     <header class="header">
-        <div class="header-left">
-            <div class="logo">MINIFUN</div>
-        </div>
-        <div class="header-right">
-            <span class="admin-badge" id="adminBadge">Admin</span>
-            <a href="/admin/logs/logout" class="logout-link">Logout</a>
+        <div class="header-content">
+            <div style="display: flex; align-items: baseline;">
+                <span class="logo">MINIFUN</span>
+                <span class="logo-sub">ADMIN LOGS</span>
+            </div>
+            <div class="header-right">
+                <span class="admin-badge" id="adminBadge">Admin</span>
+                <a href="/admin/logs/logout" class="logout-btn">Cerrar sesión</a>
+            </div>
         </div>
     </header>
 
     <main class="main">
         <aside class="sidebar">
-            <h2 class="sidebar-title">Users</h2>
+            <div class="sidebar-header">
+                <h2>USUARIOS</h2>
+                <span class="user-count" id="userCount">0</span>
+            </div>
             <div id="usersList" class="users-list">
                 <!-- Users will be rendered here by JS -->
             </div>

@@ -206,10 +206,25 @@ body {
   padding-left: calc(1.25rem - 3px);
 }
 
-.user-item.active {
+.user-item.active,
+.user-item.selected {
   background: linear-gradient(90deg, rgba(123, 63, 242, 0.2) 0%, transparent 100%);
   border-left: 3px solid var(--purple-main);
   padding-left: calc(1.25rem - 3px);
+}
+
+.no-users,
+.error-text {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.loading {
+  padding: 2rem;
+  text-align: center;
+  color: var(--text-secondary);
 }
 
 .user-name {
@@ -234,6 +249,13 @@ body {
   font-size: 0.75rem;
   color: var(--text-secondary);
   margin-top: 0.5rem;
+}
+
+.user-log-count {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  display: block;
+  margin-top: 0.25rem;
 }
 
 /* ============================================
