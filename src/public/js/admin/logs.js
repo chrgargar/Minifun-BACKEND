@@ -421,7 +421,8 @@
             }
 
             const data = await response.json();
-            adminBadge.textContent = escapeHtml(data.username || data.name || 'Admin');
+            const adminData = data.data || data;
+            adminBadge.textContent = escapeHtml(adminData.username || adminData.name || 'Admin');
         } catch (error) {
             console.error('Error fetching admin info:', error);
         }
@@ -443,7 +444,7 @@
             }
 
             const data = await response.json();
-            const users = data.users || data || [];
+            const users = data.data?.users || data.users || data || [];
             const params = getUrlParams();
 
             renderUsers(users, params.user);
@@ -473,7 +474,8 @@
             }
 
             const data = await response.json();
-            return data.dates || data || [];
+            const logsData = data.data || data;
+            return logsData.logs || logsData.dates || [];
         } catch (error) {
             console.error('Error fetching log dates:', error);
             showError('Failed to load log dates');
@@ -499,7 +501,7 @@
             }
 
             const data = await response.json();
-            return data;
+            return data.data || data;
         } catch (error) {
             console.error('Error fetching log content:', error);
             showError('Failed to load log content');
