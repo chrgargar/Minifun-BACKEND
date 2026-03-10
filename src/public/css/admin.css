@@ -198,6 +198,7 @@ body {
   color: var(--text-primary);
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .user-item:hover {
@@ -300,10 +301,28 @@ body {
 /* ============================================
    DATE PILLS
 ============================================ */
+.date-pills-container {
+  padding: 1.5rem;
+  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+}
+
+.dates-header {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--purple-main);
+  margin-bottom: 1rem;
+}
+
 .date-pills {
   display: flex;
   gap: 0.5rem;
   flex-wrap: wrap;
+}
+
+.no-logs {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
 }
 
 .date-pill {
@@ -314,6 +333,8 @@ body {
   color: var(--text-secondary);
   text-decoration: none;
   font-size: 0.8rem;
+  font-family: 'JetBrains Mono', monospace;
+  cursor: pointer;
   transition: all 0.2s ease;
 }
 
@@ -323,7 +344,8 @@ body {
   color: var(--text-primary);
 }
 
-.date-pill.active {
+.date-pill.active,
+.date-pill.selected {
   background: var(--purple-main);
   border-color: var(--purple-main);
   color: white;
@@ -357,10 +379,33 @@ body {
 /* ============================================
    LOG CONTENT
 ============================================ */
-.log-content {
-  padding: 1.5rem;
-  max-height: 70vh;
+.log-container {
+  padding: 0;
+}
+
+.log-container .download-btn {
+  margin: 0 1.5rem 1rem 1.5rem;
+}
+
+.log-content,
+.log-lines {
+  padding: 1rem 1.5rem;
+  max-height: 60vh;
   overflow-y: auto;
+}
+
+.log-lines::-webkit-scrollbar {
+  width: 8px;
+}
+
+.log-lines::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+  border-radius: 4px;
+}
+
+.log-lines::-webkit-scrollbar-thumb {
+  background: var(--purple-dark);
+  border-radius: 4px;
 }
 
 .log-content::-webkit-scrollbar {
@@ -394,11 +439,14 @@ body {
 }
 
 .log-level {
-  padding: 0.1rem 0.4rem;
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
   border-radius: 4px;
-  font-size: 0.7rem;
-  font-weight: 600;
+  font-size: 0.65rem;
+  font-weight: 700;
   margin: 0 0.5rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .log-level.DEBUG {
@@ -426,9 +474,35 @@ body {
   color: #FF6680;
 }
 
-.log-meta {
+/* JS-generated level classes */
+.log-line.level-debug .log-level {
+  background: rgba(0, 212, 255, 0.2);
+  color: var(--accent-blue);
+}
+
+.log-line.level-info .log-level {
+  background: rgba(0, 255, 136, 0.2);
+  color: var(--accent-green);
+}
+
+.log-line.level-warn .log-level {
+  background: rgba(255, 215, 0, 0.2);
+  color: var(--accent-yellow);
+}
+
+.log-line.level-error .log-level {
+  background: rgba(255, 68, 102, 0.2);
+  color: var(--accent-red);
+}
+
+.log-meta,
+.log-metadata {
   color: var(--purple-login);
   font-size: 0.75rem;
+}
+
+.log-message {
+  color: var(--text-primary);
 }
 
 .log-comment {
@@ -446,28 +520,43 @@ body {
   color: var(--text-secondary);
 }
 
-.empty-state .icon {
+.empty-state .icon,
+.empty-icon {
   font-size: 4rem;
   margin-bottom: 1rem;
   opacity: 0.5;
 }
 
-.empty-state h3 {
+.empty-state h3,
+.empty-title {
   font-family: 'Orbitron', sans-serif;
   font-size: 1.2rem;
   margin-bottom: 0.5rem;
   color: var(--text-primary);
 }
 
+.empty-message {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
 /* ============================================
    STATS GRID
 ============================================ */
-.stats-grid {
+.stats-grid,
+.stats-container {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(4, 1fr);
   gap: 1rem;
   padding: 1.5rem;
-  border-bottom: 1px solid rgba(123, 63, 242, 0.2);
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .stats-grid,
+  .stats-container {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 
 .stat-card {
@@ -490,6 +579,22 @@ body {
   color: var(--text-secondary);
   margin-top: 0.25rem;
   letter-spacing: 1px;
+}
+
+.stat-card.stat-error .stat-value {
+  color: var(--accent-red);
+}
+
+.stat-card.stat-warn .stat-value {
+  color: var(--accent-yellow);
+}
+
+.stat-card.stat-info .stat-value {
+  color: var(--accent-green);
+}
+
+.stat-card.stat-debug .stat-value {
+  color: var(--accent-blue);
 }
 
 /* ============================================
