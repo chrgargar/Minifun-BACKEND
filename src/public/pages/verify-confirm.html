@@ -28,17 +28,6 @@
         <p>&copy; <span id="year"></span> MINIFUN - Aprende jugando</p>
     </footer>
 
-    <script>
-        // Get token from URL query param
-        const urlParams = new URLSearchParams(window.location.search);
-        const token = urlParams.get('token');
-
-        if (token) {
-            document.getElementById('tokenInput').value = token;
-        }
-
-        // Set current year
-        document.getElementById('year').textContent = new Date().getFullYear();
-    </script>
+    <script src="/js/verify-confirm.js"></script>
 </body>
 </html>

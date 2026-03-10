@@ -34,17 +34,6 @@
         <p>&copy; <span id="year"></span> MINIFUN - Aprende jugando</p>
     </footer>
 
-    <script>
-        // Get error from URL query param
-        const urlParams = new URLSearchParams(window.location.search);
-        const error = urlParams.get('error');
-
-        if (error) {
-            document.getElementById('errorMessage').textContent = decodeURIComponent(error);
-        }
-
-        // Set current year
-        document.getElementById('year').textContent = new Date().getFullYear();
-    </script>
+    <script src="/js/error-page.js"></script>
 </body>
 </html>
