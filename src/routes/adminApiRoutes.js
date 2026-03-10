@@ -10,7 +10,7 @@ const { User } = require('../models');
 const fileLogService = require('../services/fileLogService');
 const { successResponse, errorResponse } = require('../responses/apiResponse');
 
-const ADMIN_SESSION_SECRET = process.env.JWT_SECRET || 'minifun-admin-secret';
+const ADMIN_SESSION_SECRET = process.env.JWT_SECRET || 'admin-session-secret';
 
 /**
  * Middleware para verificar sesión de admin via cookie
@@ -116,7 +116,7 @@ router.get('/logs/:userId/:date', requireAdminApi, async (req, res) => {
       return errorResponse(res, 'Formato de fecha inválido. Use YYYY-MM-DD', 400);
     }
 
-    const logContent = await fileLogService.readLog(userId, date);
+    const logContent = await fileLogService.readLogs(userId, date);
 
     if (!logContent) {
       return errorResponse(res, 'Log no encontrado', 404);
