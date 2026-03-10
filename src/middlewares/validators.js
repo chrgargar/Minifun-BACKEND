@@ -1,4 +1,6 @@
-const { errorResponse } = require('../utils/responseUtils');
+const { errorResponse } = require('../responses/apiResponse');
+
+const EMAIL_REGEX = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
 
 /**
  * Validación de registro
@@ -30,8 +32,7 @@ exports.validateRegister = (req, res, next) => {
 
   // Email opcional pero debe ser válido si se proporciona
   if (email && email.trim().length > 0) {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       return errorResponse(res, 'El formato del email es inválido', 400);
     }
   }
@@ -62,8 +63,7 @@ exports.validateProfileUpdate = (req, res, next) => {
   }
 
   if (email && email.trim().length > 0) {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
+    if (!EMAIL_REGEX.test(email)) {
       return errorResponse(res, 'El formato del email es inválido', 400);
     }
   }

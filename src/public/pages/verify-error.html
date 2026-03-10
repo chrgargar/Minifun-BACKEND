@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Error de Verificación - MINIFUN</title>
+    <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body class="theme-red">
+    <main class="container">
+        <div class="logo">🎮</div>
+
+        <div class="icon icon-error">✕</div>
+
+        <h1>Error de Verificación</h1>
+
+        <div id="errorMessage" class="error-message">
+            Ha ocurrido un error al verificar tu email.
+        </div>
+
+        <section class="tips">
+            <h2>¿Qué puedes hacer?</h2>
+            <ul>
+                <li>Verifica que el enlace no haya expirado</li>
+                <li>Solicita un nuevo correo de verificación</li>
+                <li>Asegúrate de usar el enlace más reciente</li>
+                <li>Contacta a soporte si el problema persiste</li>
+            </ul>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; <span id="year"></span> MINIFUN - Aprende jugando</p>
+    </footer>
+
+    <script>
+        // Get error from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const error = urlParams.get('error');
+
+        if (error) {
+            document.getElementById('errorMessage').textContent = decodeURIComponent(error);
+        }
+
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

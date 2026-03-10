@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Login - MINIFUN</title>
+    <link rel="stylesheet" href="/css/admin-login.css">
+</head>
+<body>
+    <div class="login-container">
+        <div class="logo">MINIFUN</div>
+        <div class="subtitle">ADMIN PANEL</div>
+
+        <div id="errorMessage" class="error-message" style="display: none;"></div>
+
+        <form action="/admin/logs/login" method="POST">
+            <div class="form-group">
+                <label for="usernameOrEmail">Email o usuario</label>
+                <input type="text" id="usernameOrEmail" name="usernameOrEmail" required autocomplete="username">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required autocomplete="current-password">
+            </div>
+
+            <button type="submit" class="submit-btn">Login</button>
+        </form>
+
+        <div class="footer">
+            <p>Authorized personnel only</p>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const error = urlParams.get('error');
+
+            if (error) {
+                const errorElement = document.getElementById('errorMessage');
+                errorElement.style.display = 'block';
+
+                switch (error) {
+                    case 'invalid':
+                        errorElement.textContent = 'Invalid username or password';
+                        break;
+                    case 'unauthorized':
+                        errorElement.textContent = 'You are not authorized to access this area';
+                        break;
+                    case 'session':
+                        errorElement.textContent = 'Your session has expired. Please login again';
+                        break;
+                    case 'server':
+                        errorElement.textContent = 'Error interno del servidor. Inténtalo de nuevo';
+                        break;
+                    default:
+                        errorElement.textContent = 'Ocurrió un error. Por favor, inténtalo de nuevo';
+                }
+            }
+        })();
+    </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 const jwt = require('jsonwebtoken');
 const jwtConfig = require('../config/jwt');
-const { errorResponse } = require('../utils/responseUtils');
+const { errorResponse } = require('../responses/apiResponse');
 const { User } = require('../models');
 
 /**

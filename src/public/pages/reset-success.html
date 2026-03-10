@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contraseña Actualizada - MINIFUN</title>
+    <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body class="theme-green">
+    <main class="container">
+        <div class="logo">🎮</div>
+
+        <div class="icon icon-success">✓</div>
+
+        <h1>¡Contraseña Actualizada!</h1>
+
+        <p class="message">
+            ¡Excelente <span id="username" class="highlight"></span>! Tu contraseña ha sido cambiada exitosamente.
+        </p>
+
+        <div class="badge">Contraseña segura</div>
+
+        <p class="description">
+            Ya puedes iniciar sesión con tu nueva contraseña.
+        </p>
+    </main>
+
+    <footer>
+        <p>&copy; <span id="year"></span> MINIFUN - Aprende jugando</p>
+    </footer>
+
+    <script>
+        // Get username from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const username = urlParams.get('username');
+
+        if (username) {
+            document.getElementById('username').textContent = decodeURIComponent(username);
+        }
+
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

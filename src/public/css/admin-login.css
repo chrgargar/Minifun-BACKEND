@@ -1,0 +1,172 @@
+/**
+ * MINIFUN - Admin Login CSS
+ * Styles for the admin login page
+ */
+
+/* ============================================
+   FONTS
+============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ============================================
+   CSS VARIABLES
+============================================ */
+:root {
+  --purple-main: #7B3FF2;
+  --purple-login: #7B68B8;
+  --purple-dark: #5B4A8B;
+  --purple-darker: #2D1B3D;
+  --purple-glow: rgba(123, 63, 242, 0.4);
+  --bg-dark: #0D0D1A;
+  --bg-card: #1A1A2E;
+  --bg-card-hover: #252542;
+  --text-primary: #FFFFFF;
+  --text-secondary: #A0A0C0;
+  --accent-green: #00FF88;
+  --accent-red: #FF4466;
+  --accent-yellow: #FFD700;
+  --accent-blue: #00D4FF;
+}
+
+/* ============================================
+   BASE STYLES
+============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'JetBrains Mono', monospace;
+  background: var(--bg-dark);
+  color: var(--text-primary);
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse at top left, rgba(123, 63, 242, 0.15) 0%, transparent 50%),
+    radial-gradient(ellipse at bottom right, rgba(91, 74, 139, 0.1) 0%, transparent 50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================
+   LOGIN CONTAINER
+============================================ */
+.login-container {
+  background: var(--bg-card);
+  border: 1px solid rgba(123, 63, 242, 0.3);
+  border-radius: 20px;
+  padding: 3rem;
+  width: 100%;
+  max-width: 400px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5), 0 0 40px var(--purple-glow);
+}
+
+/* ============================================
+   LOGO
+============================================ */
+.logo {
+  font-family: 'Orbitron', sans-serif;
+  font-size: 2rem;
+  font-weight: 900;
+  text-align: center;
+  background: linear-gradient(135deg, var(--purple-main) 0%, #00D4FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  margin-bottom: 0.5rem;
+}
+
+.subtitle {
+  text-align: center;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+  letter-spacing: 3px;
+  margin-bottom: 2rem;
+}
+
+/* ============================================
+   FORM STYLES
+============================================ */
+.form-group {
+  margin-bottom: 1.5rem;
+}
+
+label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+  letter-spacing: 1px;
+}
+
+input {
+  width: 100%;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(123, 63, 242, 0.3);
+  border-radius: 10px;
+  color: var(--text-primary);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1rem;
+  transition: all 0.3s ease;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--purple-main);
+  box-shadow: 0 0 20px var(--purple-glow);
+}
+
+input::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.5;
+}
+
+/* ============================================
+   BUTTON
+============================================ */
+button {
+  width: 100%;
+  padding: 1rem;
+  background: linear-gradient(135deg, var(--purple-main) 0%, #5B4A8B 100%);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 1rem;
+  font-weight: 700;
+  letter-spacing: 2px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px var(--purple-glow);
+}
+
+/* ============================================
+   ERROR MESSAGE
+============================================ */
+.error {
+  background: rgba(255, 68, 102, 0.1);
+  border: 1px solid var(--accent-red);
+  color: var(--accent-red);
+  padding: 1rem;
+  border-radius: 10px;
+  margin-bottom: 1.5rem;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+/* ============================================
+   FOOTER
+============================================ */
+.footer {
+  text-align: center;
+  margin-top: 2rem;
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+}

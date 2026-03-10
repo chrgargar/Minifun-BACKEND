@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Logs - MINIFUN</title>
+    <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo">MINIFUN</div>
+        </div>
+        <div class="header-right">
+            <span class="admin-badge" id="adminBadge">Admin</span>
+            <a href="/admin/logs/logout" class="logout-link">Logout</a>
+        </div>
+    </header>
+
+    <main class="main">
+        <aside class="sidebar">
+            <h2 class="sidebar-title">Users</h2>
+            <div id="usersList" class="users-list">
+                <!-- Users will be rendered here by JS -->
+            </div>
+        </aside>
+
+        <section class="content" id="content">
+            <!-- Content will be rendered here by JS -->
+        </section>
+    </main>
+
+    <!-- Template: User Item -->
+    <template id="template-user-item">
+        <div class="user-item" data-user-id="">
+            <span class="user-name"></span>
+            <span class="user-log-count"></span>
+        </div>
+    </template>
+
+    <!-- Template: Date Pill -->
+    <template id="template-date-pill">
+        <button class="date-pill" data-date="">
+            <span class="date-text"></span>
+        </button>
+    </template>
+
+    <!-- Template: Log Line -->
+    <template id="template-log-line">
+        <div class="log-line">
+            <span class="log-timestamp"></span>
+            <span class="log-level"></span>
+            <span class="log-message"></span>
+            <span class="log-metadata"></span>
+        </div>
+    </template>
+
+    <!-- Template: Stat Card -->
+    <template id="template-stat-card">
+        <div class="stat-card">
+            <div class="stat-value"></div>
+            <div class="stat-label"></div>
+        </div>
+    </template>
+
+    <!-- Template: Empty State -->
+    <template id="template-empty-state">
+        <div class="empty-state">
+            <div class="empty-icon"></div>
+            <h3 class="empty-title"></h3>
+            <p class="empty-message"></p>
+        </div>
+    </template>
+
+    <script src="/js/admin/logs.js" defer></script>
+</body>
+</html>

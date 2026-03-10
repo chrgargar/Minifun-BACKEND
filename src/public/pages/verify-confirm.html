@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verificar Email - MINIFUN</title>
+    <link rel="stylesheet" href="/css/pages.css">
+</head>
+<body class="theme-purple">
+    <main class="container">
+        <div class="logo">🎮</div>
+
+        <div class="icon">✉️</div>
+
+        <h1>Verificar Email</h1>
+
+        <p class="description">
+            Haz clic en el botón de abajo para confirmar tu dirección de correo electrónico y activar tu cuenta.
+        </p>
+
+        <form action="/api/auth/verify-email" method="POST">
+            <input type="hidden" name="token" id="tokenInput">
+            <button type="submit" class="btn">Confirmar Verificación</button>
+        </form>
+    </main>
+
+    <footer>
+        <p>&copy; <span id="year"></span> MINIFUN - Aprende jugando</p>
+    </footer>
+
+    <script>
+        // Get token from URL query param
+        const urlParams = new URLSearchParams(window.location.search);
+        const token = urlParams.get('token');
+
+        if (token) {
+            document.getElementById('tokenInput').value = token;
+        }
+
+        // Set current year
+        document.getElementById('year').textContent = new Date().getFullYear();
+    </script>
+</body>
+</html>

@@ -1,11 +1,22 @@
 const { User } = require('../models');
-const jwt = require('jsonwebtoken');
-const jwtConfig = require('../config/jwt');
-const { successResponse, errorResponse } = require('../utils/responseUtils');
+const { successResponse, errorResponse } = require('../responses/apiResponse');
 const logger = require('../config/logger');
 const emailService = require('../services/emailService');
-const { getVerificationSuccessPage, getVerificationErrorPage, getVerificationConfirmPage } = require('../templates/verificationPage');
-const { getPasswordResetFormPage, getPasswordResetSuccessPage, getPasswordResetErrorPage } = require('../templates/passwordResetPage');
+const authService = require('../services/authService');
+
+// Helpers para redirección a páginas estáticas
+const redirectToVerifyError = (res, message) =>
+  res.redirect(`/pages/verify-error.html?error=${encodeURIComponent(message)}`);
+const redirectToVerifySuccess = (res, username) =>
+  res.redirect(`/pages/verify-success.html?username=${encodeURIComponent(username)}`);
+const redirectToVerifyConfirm = (res, token) =>
+  res.redirect(`/pages/verify-confirm.html?token=${encodeURIComponent(token)}`);
+const redirectToResetForm = (res, token, error = null) =>
+  res.redirect(`/pages/reset-password.html?token=${encodeURIComponent(token)}${error ? '&error=' + encodeURIComponent(error) : ''}`);
+const redirectToResetSuccess = (res, username) =>
+  res.redirect(`/pages/reset-success.html?username=${encodeURIComponent(username)}`);
+const redirectToResetError = (res, message) =>
+  res.redirect(`/pages/reset-error.html?error=${encodeURIComponent(message)}`);
 
 /**
  * POST /auth/register
@@ -21,19 +32,13 @@ exports.register = async (req, res, next) => {
     logger.auth('Intento de registro', { username, email: email || 'sin email', ip: req.ip });
 
     // Verificar si el usuario ya existe
-    const existingUser = await User.findOne({
-      where: { username }
-    });
-
-    if (existingUser) {
+    if (await authService.isUsernameTaken(username)) {
       return errorResponse(res, 'El nombre de usuario ya está en uso', 409);
     }
 
     // Verificar email si se proporcionó
     if (email) {
-      const existingEmail = await User.findOne({
-        where: { email }
-      });
+      const existingEmail = await authService.findByEmail(email);
 
       if (existingEmail) {
         if (existingEmail.email_verified) {
@@ -99,14 +104,7 @@ exports.register = async (req, res, next) => {
     });
 
     // Generar JWT (access token) para autenticación inmediata post-registro
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        username: user.username
-      },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
-    );
+    const token = authService.generateAccessToken(user);
 
     // Generar refresh token para renovación sin re-login
     const refreshToken = user.generateRefreshToken();
@@ -115,17 +113,7 @@ exports.register = async (req, res, next) => {
     return successResponse(res, {
       token,
       refreshToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, email ? 'Usuario registrado. Verifica tu email para activar tu cuenta.' : 'Usuario registrado exitosamente', 201);
 
   } catch (error) {
@@ -152,14 +140,7 @@ exports.login = async (req, res, next) => {
     }
 
     // Buscar usuario por username o email
-    const user = await User.findOne({
-      where: {
-        [require('sequelize').Op.or]: [
-          { username: usernameOrEmail },
-          { email: usernameOrEmail }
-        ]
-      }
-    });
+    const user = await authService.findByUsernameOrEmail(usernameOrEmail);
 
     if (!user) {
       logger.security('Login fallido - usuario no encontrado', { usernameOrEmail, ip: req.ip });
@@ -180,36 +161,15 @@ exports.login = async (req, res, next) => {
     }
 
     // Calcular racha de días consecutivos
-    const now = new Date();
-    const lastLogin = user.last_login ? new Date(user.last_login) : null;
-    if (lastLogin) {
-      const lastDay = new Date(lastLogin.getFullYear(), lastLogin.getMonth(), lastLogin.getDate());
-      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-      const diffDays = Math.round((today - lastDay) / (1000 * 60 * 60 * 24));
-      if (diffDays === 1) {
-        user.streak_days = (user.streak_days || 0) + 1;
-      } else if (diffDays > 1) {
-        user.streak_days = 1;
-      }
-      // Si diffDays === 0 (mismo día), no cambiar streak
-    } else {
-      user.streak_days = 1;
-    }
+    authService.calculateStreak(user);
 
     // Actualizar último login y generar refresh token
-    user.last_login = now;
+    user.last_login = new Date();
     const refreshToken = user.generateRefreshToken();
     await user.save();
 
     // Generar JWT (access token)
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        username: user.username
-      },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
-    );
+    const token = authService.generateAccessToken(user);
 
     logger.auth('Login exitoso', {
       userId: user.id,
@@ -220,17 +180,7 @@ exports.login = async (req, res, next) => {
     return successResponse(res, {
       token,
       refreshToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, 'Login exitoso');
 
   } catch (error) {
@@ -246,24 +196,14 @@ exports.login = async (req, res, next) => {
 exports.getMe = async (req, res, next) => {
   try {
     // req.userId viene del middleware de autenticación
-    const user = await User.findByPk(req.userId);
+    const user = await authService.findById(req.userId);
 
     if (!user) {
       return errorResponse(res, 'Usuario no encontrado', 404);
     }
 
     return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     });
 
   } catch (error) {
@@ -278,10 +218,7 @@ exports.getMe = async (req, res, next) => {
 exports.logout = async (req, res, next) => {
   try {
     if (req.userId) {
-      await User.update(
-        { refresh_token: null, refresh_token_expires: null },
-        { where: { id: req.userId } }
-      );
+      await authService.invalidateRefreshToken(req.userId);
     }
 
     return successResponse(res, null, 'Logout exitoso');
@@ -303,7 +240,7 @@ exports.verifyEmail = async (req, res, next) => {
     const { token } = req.params;
 
     if (!token) {
-      return res.status(400).send(getVerificationErrorPage('Token de verificación requerido'));
+      return redirectToVerifyError(res, 'Token de verificación requerido');
     }
 
     logger.auth('Página de confirmación de verificación', {
@@ -312,24 +249,22 @@ exports.verifyEmail = async (req, res, next) => {
     });
 
     // Verificar que el token existe (sin consumirlo)
-    const user = await User.findOne({
-      where: { verification_token: token }
-    });
+    const user = await authService.findByVerificationToken(token);
 
     if (!user) {
-      return res.status(400).send(getVerificationErrorPage('Token de verificación inválido o expirado'));
+      return redirectToVerifyError(res, 'Token de verificación inválido o expirado');
     }
 
     if (!user.isVerificationTokenValid(token)) {
-      return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
+      return redirectToVerifyError(res, 'El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.');
     }
 
     // Mostrar página de confirmación con botón que hace POST
-    return res.status(200).send(getVerificationConfirmPage(token));
+    return redirectToVerifyConfirm(res, token);
 
   } catch (error) {
     logger.error('Error mostrando página de verificación', { error: error.message });
-    return res.status(500).send(getVerificationErrorPage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.'));
+    return redirectToVerifyError(res, 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.');
   }
 };
 
@@ -345,7 +280,7 @@ exports.confirmVerifyEmail = async (req, res, next) => {
     const { token } = req.body;
 
     if (!token) {
-      return res.status(400).send(getVerificationErrorPage('Token de verificación requerido'));
+      return redirectToVerifyError(res, 'Token de verificación requerido');
     }
 
     logger.auth('Confirmación de verificación de email', {
@@ -354,16 +289,14 @@ exports.confirmVerifyEmail = async (req, res, next) => {
     });
 
     // Buscar usuario por token de verificación
-    const user = await User.findOne({
-      where: { verification_token: token }
-    });
+    const user = await authService.findByVerificationToken(token);
 
     if (!user) {
       logger.security('Token de verificación no encontrado', {
         tokenPrefix: token.substring(0, 10) + '...',
         ip: req.ip,
       });
-      return res.status(400).send(getVerificationErrorPage('Token de verificación inválido o expirado'));
+      return redirectToVerifyError(res, 'Token de verificación inválido o expirado');
     }
 
     // Verificar si el token es válido y no ha expirado
@@ -373,7 +306,7 @@ exports.confirmVerifyEmail = async (req, res, next) => {
         username: user.username,
         ip: req.ip,
       });
-      return res.status(400).send(getVerificationErrorPage('El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.'));
+      return redirectToVerifyError(res, 'El token de verificación ha expirado. Solicita un nuevo correo de verificación desde la app.');
     }
 
     // Si hay un pending_email, aplicar el cambio de email
@@ -396,11 +329,11 @@ exports.confirmVerifyEmail = async (req, res, next) => {
     });
 
     // Devolver página HTML de éxito
-    return res.status(200).send(getVerificationSuccessPage(user.username));
+    return redirectToVerifySuccess(res, user.username);
 
   } catch (error) {
     logger.error('Error en verificación de email', { error: error.message });
-    return res.status(500).send(getVerificationErrorPage('Ocurrió un error inesperado. Por favor, inténtalo de nuevo.'));
+    return redirectToVerifyError(res, 'Ocurrió un error inesperado. Por favor, inténtalo de nuevo.');
   }
 };
 
@@ -412,7 +345,7 @@ exports.confirmVerifyEmail = async (req, res, next) => {
 exports.resendVerification = async (req, res, next) => {
   try {
     // req.userId viene del middleware de autenticación
-    const user = await User.findByPk(req.userId);
+    const user = await authService.findById(req.userId);
 
     if (!user) {
       return errorResponse(res, 'Usuario no encontrado', 404);
@@ -478,7 +411,7 @@ exports.forgotPassword = async (req, res, next) => {
     logger.auth('Solicitud de reset de contraseña', { email, ip: req.ip });
 
     // Buscar usuario por email
-    const user = await User.findOne({ where: { email } });
+    const user = await authService.findByEmail(email);
 
     // Por seguridad, siempre devolvemos el mismo mensaje
     // aunque el email no exista (evita enumeración de usuarios)
@@ -518,26 +451,26 @@ exports.showResetPasswordForm = async (req, res, next) => {
     const { token } = req.params;
 
     if (!token) {
-      return res.status(400).send(getPasswordResetErrorPage('Token de reset requerido'));
+      return redirectToResetError(res, 'Token de reset requerido');
     }
 
     // Verificar que el token existe y es válido
-    const user = await User.findOne({ where: { password_reset_token: token } });
+    const user = await authService.findByPasswordResetToken(token);
 
     if (!user) {
-      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación es inválido o ha expirado'));
+      return redirectToResetError(res, 'El enlace de recuperación es inválido o ha expirado');
     }
 
     if (!user.isPasswordResetTokenValid(token)) {
-      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación ha expirado. Solicita uno nuevo.'));
+      return redirectToResetError(res, 'El enlace de recuperación ha expirado. Solicita uno nuevo.');
     }
 
     // Mostrar formulario
-    return res.status(200).send(getPasswordResetFormPage(token));
+    return redirectToResetForm(res, token);
 
   } catch (error) {
     logger.error('Error mostrando formulario de reset', { error: error.message });
-    return res.status(500).send(getPasswordResetErrorPage('Ocurrió un error inesperado'));
+    return redirectToResetError(res, 'Ocurrió un error inesperado');
   }
 };
 
@@ -551,34 +484,34 @@ exports.resetPassword = async (req, res, next) => {
 
     // Validaciones
     if (!token) {
-      return res.status(400).send(getPasswordResetErrorPage('Token de reset requerido'));
+      return redirectToResetError(res, 'Token de reset requerido');
     }
 
     if (!password || !confirmPassword) {
-      return res.status(400).send(getPasswordResetFormPage(token, 'Todos los campos son requeridos'));
+      return redirectToResetForm(res, token, 'Todos los campos son requeridos');
     }
 
     if (password !== confirmPassword) {
-      return res.status(400).send(getPasswordResetFormPage(token, 'Las contraseñas no coinciden'));
+      return redirectToResetForm(res, token, 'Las contraseñas no coinciden');
     }
 
     if (password.length < 6) {
-      return res.status(400).send(getPasswordResetFormPage(token, 'La contraseña debe tener al menos 6 caracteres'));
+      return redirectToResetForm(res, token, 'La contraseña debe tener al menos 6 caracteres');
     }
 
     logger.auth('Intento de reset de contraseña', { token: token.substring(0, 10) + '...', ip: req.ip });
 
     // Buscar usuario por token
-    const user = await User.findOne({ where: { password_reset_token: token } });
+    const user = await authService.findByPasswordResetToken(token);
 
     if (!user) {
       logger.security('Token de reset inválido', { token: token.substring(0, 10) + '...', ip: req.ip });
-      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación es inválido o ha expirado'));
+      return redirectToResetError(res, 'El enlace de recuperación es inválido o ha expirado');
     }
 
     if (!user.isPasswordResetTokenValid(token)) {
       logger.security('Token de reset expirado', { userId: user.id, ip: req.ip });
-      return res.status(400).send(getPasswordResetErrorPage('El enlace de recuperación ha expirado. Solicita uno nuevo.'));
+      return redirectToResetError(res, 'El enlace de recuperación ha expirado. Solicita uno nuevo.');
     }
 
     // Cambiar contraseña
@@ -592,11 +525,11 @@ exports.resetPassword = async (req, res, next) => {
     });
 
     // Mostrar página de éxito
-    return res.status(200).send(getPasswordResetSuccessPage(user.username));
+    return redirectToResetSuccess(res, user.username);
 
   } catch (error) {
     logger.error('Error en reset de contraseña', { error: error.message });
-    return res.status(500).send(getPasswordResetErrorPage('Ocurrió un error inesperado'));
+    return redirectToResetError(res, 'Ocurrió un error inesperado');
   }
 };
 
@@ -613,7 +546,7 @@ exports.refreshToken = async (req, res, next) => {
     }
 
     // Buscar usuario por refresh token
-    const user = await User.findOne({ where: { refresh_token: refreshToken } });
+    const user = await authService.findByRefreshToken(refreshToken);
 
     if (!user) {
       return errorResponse(res, 'Refresh token inválido', 401);
@@ -628,14 +561,7 @@ exports.refreshToken = async (req, res, next) => {
     }
 
     // Generar nuevo access token
-    const token = jwt.sign(
-      {
-        userId: user.id,
-        username: user.username
-      },
-      jwtConfig.secret,
-      { expiresIn: jwtConfig.expiresIn }
-    );
+    const token = authService.generateAccessToken(user);
 
     // Generar nuevo refresh token (rotación para mayor seguridad)
     const newRefreshToken = user.generateRefreshToken();
@@ -646,17 +572,7 @@ exports.refreshToken = async (req, res, next) => {
     return successResponse(res, {
       token,
       refreshToken: newRefreshToken,
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, 'Token renovado exitosamente');
 
   } catch (error) {
@@ -671,7 +587,7 @@ exports.refreshToken = async (req, res, next) => {
  */
 exports.updateProfile = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.userId);
+    const user = await authService.findById(req.userId);
 
     if (!user) {
       return errorResponse(res, 'Usuario no encontrado', 404);
@@ -681,8 +597,7 @@ exports.updateProfile = async (req, res, next) => {
 
     // Actualizar username si se proporcionó
     if (username && username !== user.username) {
-      const existingUser = await User.findOne({ where: { username } });
-      if (existingUser) {
+      if (await authService.isUsernameTaken(username, user.id)) {
         return errorResponse(res, 'El nombre de usuario ya está en uso', 409);
       }
       user.username = username;
@@ -694,7 +609,7 @@ exports.updateProfile = async (req, res, next) => {
     let emailChangeRequested = false;
     if (email !== undefined && email !== user.email) {
       if (email) {
-        const existingEmail = await User.findOne({ where: { email } });
+        const existingEmail = await authService.findByEmail(email);
         if (existingEmail && existingEmail.id !== user.id) {
           return errorResponse(res, 'El email ya está en uso', 409);
         }
@@ -740,17 +655,7 @@ exports.updateProfile = async (req, res, next) => {
       : 'Perfil actualizado exitosamente';
 
     return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, message);
 
   } catch (error) {
@@ -765,7 +670,7 @@ exports.updateProfile = async (req, res, next) => {
  */
 exports.updateAvatar = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.userId);
+    const user = await authService.findById(req.userId);
 
     if (!user) {
       return errorResponse(res, 'Usuario no encontrado', 404);
@@ -796,17 +701,7 @@ exports.updateAvatar = async (req, res, next) => {
     logger.auth('Avatar actualizado', { userId: user.id });
 
     return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, 'Avatar actualizado exitosamente');
 
   } catch (error) {
@@ -821,7 +716,7 @@ exports.updateAvatar = async (req, res, next) => {
  */
 exports.deleteAvatar = async (req, res, next) => {
   try {
-    const user = await User.findByPk(req.userId);
+    const user = await authService.findById(req.userId);
 
     if (!user) {
       return errorResponse(res, 'Usuario no encontrado', 404);
@@ -833,17 +728,7 @@ exports.deleteAvatar = async (req, res, next) => {
     logger.auth('Avatar eliminado', { userId: user.id });
 
     return successResponse(res, {
-      user: {
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        email_verified: user.email_verified,
-        is_premium: user.is_premium,
-        is_admin: user.is_admin,
-        created_at: user.created_at,
-        last_login: user.last_login,
-        streak_days: user.streak_days
-      }
+      user: authService.formatUserResponse(user)
     }, 'Avatar eliminado exitosamente');
 
   } catch (error) {

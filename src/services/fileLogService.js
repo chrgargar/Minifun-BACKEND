@@ -5,6 +5,8 @@ const path = require('path');
 // Directorio base para logs de usuarios
 const LOGS_DIR = path.join(process.cwd(), 'logs', 'users');
 
+const DATE_FORMAT_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+
 // Días de retención de logs
 const RETENTION_DAYS = 30;
 
@@ -230,6 +232,22 @@ async function cleanupOldLogs() {
   return deletedCount;
 }
 
+/**
+ * Enriquece registros de logs con datos de usuario
+ * @param {Array} usersWithLogs - Array de objetos con userId
+ * @param {Array} users - Array de usuarios con id, username, email
+ * @returns {Array} - usersWithLogs enriquecido con username y email
+ */
+const enrichLogsWithUserData = (usersWithLogs, users) => {
+  const userMap = {};
+  users.forEach(u => { userMap[u.id] = { username: u.username, email: u.email }; });
+  return usersWithLogs.map(u => ({
+    ...u,
+    username: userMap[u.userId]?.username || 'Unknown',
+    email: userMap[u.userId]?.email || null
+  }));
+};
+
 module.exports = {
   writeLogs,
   readLogs,
@@ -237,5 +255,7 @@ module.exports = {
   listUsersWithLogs,
   getLogFilePath,
   cleanupOldLogs,
-  RETENTION_DAYS
+  RETENTION_DAYS,
+  DATE_FORMAT_REGEX,
+  enrichLogsWithUserData
 };

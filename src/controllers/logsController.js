@@ -1,6 +1,7 @@
 const { User } = require('../models');
 const fileLogService = require('../services/fileLogService');
-const { successResponse, errorResponse } = require('../utils/responseUtils');
+const { enrichLogsWithUserData, DATE_FORMAT_REGEX } = require('../services/fileLogService');
+const { successResponse, errorResponse } = require('../responses/apiResponse');
 const logger = require('../config/logger');
 const path = require('path');
 const fs = require('fs');
@@ -44,16 +45,7 @@ exports.getUsersWithLogs = async (req, res) => {
       attributes: ['id', 'username', 'email']
     });
 
-    const userMap = {};
-    users.forEach(u => {
-      userMap[u.id] = { username: u.username, email: u.email };
-    });
-
-    const result = usersWithLogs.map(u => ({
-      ...u,
-      username: userMap[u.userId]?.username || 'Unknown',
-      email: userMap[u.userId]?.email || null
-    }));
+    const result = enrichLogsWithUserData(usersWithLogs, users);
 
     return successResponse(res, { users: result });
   } catch (error) {
@@ -100,7 +92,7 @@ exports.readUserLog = async (req, res) => {
     const { userId, date } = req.params;
 
     // Validar formato de fecha
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!DATE_FORMAT_REGEX.test(date)) {
       return errorResponse(res, 'Formato de fecha inválido. Usar YYYY-MM-DD', 400);
     }
 
@@ -122,7 +114,7 @@ exports.downloadLog = async (req, res) => {
     const { userId, date } = req.params;
 
     // Validar formato de fecha
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+    if (!DATE_FORMAT_REGEX.test(date)) {
       return errorResponse(res, 'Formato de fecha inválido. Usar YYYY-MM-DD', 400);
     }
 

@@ -3,10 +3,12 @@ const cors = require('cors');
 const helmet = require('helmet');
 const morgan = require('morgan');
 const cookieParser = require('cookie-parser');
+const path = require('path');
 require('dotenv').config();
 
 const routes = require('./routes');
 const adminRoutes = require('./routes/adminRoutes');
+const adminApiRoutes = require('./routes/adminApiRoutes');
 const { errorHandler, notFound } = require('./middlewares/errorHandler');
 const { generalLimiter } = require('./middlewares/rateLimiter');
 const logger = require('./config/logger');
@@ -52,10 +54,18 @@ app.use(cookieParser());
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
+// ==================== ARCHIVOS ESTÁTICOS ====================
+
+// Servir archivos estáticos desde la carpeta public
+app.use(express.static(path.join(__dirname, 'public')));
+
 // ==================== RUTAS ====================
 
 // Rutas principales de la API
 app.use('/api', routes);
+
+// API del panel de administración (JSON)
+app.use('/api/admin', adminApiRoutes);
 
 // Panel de administración (web)
 app.use('/admin/logs', adminRoutes);

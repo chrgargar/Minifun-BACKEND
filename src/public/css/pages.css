@@ -1,0 +1,475 @@
+/**
+ * MINIFUN - Pages CSS
+ * Unified styles for verification and password reset pages
+ */
+
+/* ============================================
+   FONTS
+============================================ */
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap');
+
+/* ============================================
+   CSS VARIABLES
+============================================ */
+:root {
+  /* Purple Theme (Verification) */
+  --purple-start: #667eea;
+  --purple-end: #764ba2;
+
+  /* Green Theme (Success) */
+  --green-start: #4ade80;
+  --green-end: #22c55e;
+
+  /* Red Theme (Error) */
+  --red-start: #ef4444;
+  --red-end: #dc2626;
+  --red-light: #fca5a5;
+
+  /* Pink Theme (Password Reset) */
+  --pink-start: #f093fb;
+  --pink-end: #f5576c;
+
+  /* Badge Colors */
+  --badge-yellow-start: #fbbf24;
+  --badge-yellow-end: #f59e0b;
+
+  /* Text Colors */
+  --text-dark: #1f2937;
+  --text-gray: #6b7280;
+  --text-light-gray: #9ca3af;
+  --text-dark-gray: #374151;
+
+  /* Error Colors */
+  --error-bg: #fef2f2;
+  --error-border: #fecaca;
+  --error-text: #dc2626;
+
+  /* Other Colors */
+  --white: #ffffff;
+  --tips-bg: #f9fafb;
+  --input-border: #e5e7eb;
+}
+
+/* ============================================
+   BASE STYLES
+============================================ */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Poppins', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.container {
+  background: var(--white);
+  border-radius: 24px;
+  padding: 48px;
+  max-width: 480px;
+  width: 100%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.6s ease-out;
+}
+
+/* ============================================
+   ANIMATIONS
+============================================ */
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes bounce {
+  0% {
+    transform: scale(0);
+  }
+  50% {
+    transform: scale(1.2);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes shake {
+  0%, 100% {
+    transform: translateX(0);
+  }
+  20%, 60% {
+    transform: translateX(-10px);
+  }
+  40%, 80% {
+    transform: translateX(10px);
+  }
+}
+
+@keyframes draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* ============================================
+   ICON STYLES
+============================================ */
+.icon {
+  width: 100px;
+  height: 100px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 24px;
+}
+
+.icon svg {
+  width: 50px;
+  height: 50px;
+  color: var(--white);
+}
+
+/* Checkmark Animation */
+.checkmark {
+  stroke-dasharray: 100;
+  stroke-dashoffset: 100;
+  animation: draw 0.6s ease-out 0.6s forwards;
+}
+
+/* Icon Animations by Theme */
+.icon-success {
+  background: linear-gradient(135deg, var(--green-start) 0%, var(--green-end) 100%);
+  animation: bounce 0.6s ease-out 0.3s both;
+}
+
+.icon-error {
+  background: linear-gradient(135deg, var(--red-light) 0%, var(--red-start) 100%);
+  animation: shake 0.6s ease-out 0.3s;
+}
+
+.icon-purple {
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+}
+
+/* ============================================
+   TYPOGRAPHY
+============================================ */
+h1 {
+  color: var(--text-dark);
+  font-size: 28px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+p {
+  color: var(--text-gray);
+  font-size: 16px;
+  line-height: 1.6;
+  margin-bottom: 32px;
+}
+
+.username {
+  font-weight: 600;
+}
+
+.subtitle {
+  color: var(--text-gray);
+  font-size: 14px;
+  margin-bottom: 32px;
+}
+
+/* ============================================
+   ERROR MESSAGE
+============================================ */
+.error-message {
+  background: var(--error-bg);
+  border: 1px solid var(--error-border);
+  color: var(--error-text);
+  padding: 16px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+  font-size: 14px;
+}
+
+.error-message--inline {
+  padding: 12px 16px;
+  text-align: left;
+}
+
+/* ============================================
+   FORM STYLES
+============================================ */
+.form-group {
+  margin-bottom: 20px;
+  text-align: left;
+}
+
+label {
+  display: block;
+  color: var(--text-dark-gray);
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid var(--input-border);
+  border-radius: 12px;
+  font-size: 16px;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+input:focus {
+  outline: none;
+}
+
+.password-requirements {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--text-light-gray);
+}
+
+/* ============================================
+   BUTTON STYLES
+============================================ */
+.btn {
+  text-decoration: none;
+  padding: 16px 40px;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  display: inline-block;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: none;
+  cursor: pointer;
+  font-family: 'Poppins', sans-serif;
+  color: var(--white);
+}
+
+.btn:hover {
+  transform: translateY(-2px);
+}
+
+.btn:active {
+  transform: translateY(0);
+}
+
+.btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* CTA Button (Purple) */
+.cta,
+.btn-purple {
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+}
+
+.cta:hover,
+.btn-purple:hover {
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+/* Verify Button */
+.verify-btn {
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+  color: var(--white);
+  border: none;
+  padding: 16px 48px;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  font-family: 'Poppins', sans-serif;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.verify-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+}
+
+.verify-btn:active {
+  transform: translateY(0);
+}
+
+.verify-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Submit Button (Pink) */
+.submit-btn,
+.btn-pink {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, var(--pink-start) 0%, var(--pink-end) 100%);
+  color: var(--white);
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-top: 8px;
+}
+
+.submit-btn:hover,
+.btn-pink:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 30px rgba(245, 87, 108, 0.4);
+}
+
+.submit-btn:disabled,
+.btn-pink:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* ============================================
+   BADGES
+============================================ */
+.badge {
+  display: inline-block;
+  padding: 8px 20px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--white);
+}
+
+.badge-yellow {
+  background: linear-gradient(135deg, var(--badge-yellow-start) 0%, var(--badge-yellow-end) 100%);
+  margin-bottom: 24px;
+}
+
+.success-badge {
+  display: inline-block;
+  background: linear-gradient(135deg, var(--green-start) 0%, var(--green-end) 100%);
+  color: var(--white);
+  padding: 8px 20px;
+  border-radius: 50px;
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 24px;
+}
+
+/* ============================================
+   TIPS SECTION
+============================================ */
+.tips {
+  text-align: left;
+  background: var(--tips-bg);
+  padding: 20px;
+  border-radius: 12px;
+  margin-bottom: 24px;
+}
+
+.tips h3 {
+  color: var(--text-dark-gray);
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.tips ul {
+  color: var(--text-gray);
+  font-size: 14px;
+  padding-left: 20px;
+}
+
+.tips li {
+  margin-bottom: 8px;
+}
+
+/* ============================================
+   FOOTER & LOGO
+============================================ */
+.footer {
+  margin-top: 32px;
+  color: var(--text-light-gray);
+  font-size: 14px;
+}
+
+.logo {
+  font-size: 32px;
+  margin-bottom: 8px;
+}
+
+.logo--large {
+  font-size: 48px;
+}
+
+/* ============================================
+   THEME CLASSES
+============================================ */
+
+/* Purple Theme (Verification) */
+.theme-purple body,
+body.theme-purple {
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+}
+
+.theme-purple .username {
+  color: var(--purple-start);
+}
+
+.theme-purple .icon {
+  background: linear-gradient(135deg, var(--purple-start) 0%, var(--purple-end) 100%);
+}
+
+/* Green Theme (Success) */
+.theme-green body,
+body.theme-green {
+  background: linear-gradient(135deg, var(--green-start) 0%, var(--green-end) 100%);
+}
+
+.theme-green .username {
+  color: var(--green-end);
+}
+
+.theme-green .icon {
+  background: linear-gradient(135deg, var(--green-start) 0%, var(--green-end) 100%);
+  animation: bounce 0.6s ease-out 0.3s both;
+}
+
+/* Red Theme (Error) */
+.theme-red body,
+body.theme-red {
+  background: linear-gradient(135deg, var(--red-start) 0%, var(--red-end) 100%);
+}
+
+.theme-red .icon {
+  background: linear-gradient(135deg, var(--red-light) 0%, var(--red-start) 100%);
+  animation: shake 0.6s ease-out 0.3s;
+}
+
+/* Pink Theme (Password Reset) */
+.theme-pink body,
+body.theme-pink {
+  background: linear-gradient(135deg, var(--pink-start) 0%, var(--pink-end) 100%);
+}
+
+.theme-pink input:focus {
+  border-color: var(--pink-end);
+  box-shadow: 0 0 0 3px rgba(245, 87, 108, 0.1);
+}
