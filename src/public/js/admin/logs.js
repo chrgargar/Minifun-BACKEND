@@ -199,18 +199,21 @@
             noLogs.textContent = 'No logs available for this user';
             pillsWrapper.appendChild(noLogs);
         } else {
-            dates.forEach(date => {
+            dates.forEach(logEntry => {
+                // logEntry can be a string (date) or object { date, filename, size, sizeKB }
+                const dateStr = typeof logEntry === 'string' ? logEntry : logEntry.date;
+
                 const template = templates.datePill.content.cloneNode(true);
                 const pill = template.querySelector('.date-pill');
 
-                pill.dataset.date = date;
-                pill.querySelector('.date-text').textContent = formatDate(date);
+                pill.dataset.date = dateStr;
+                pill.querySelector('.date-text').textContent = formatDate(dateStr);
 
-                if (date === selectedDate) {
+                if (dateStr === selectedDate) {
                     pill.classList.add('selected');
                 }
 
-                pill.addEventListener('click', () => handleDateClick(userId, date));
+                pill.addEventListener('click', () => handleDateClick(userId, dateStr));
 
                 pillsWrapper.appendChild(template);
             });
