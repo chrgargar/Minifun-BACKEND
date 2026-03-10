@@ -118,13 +118,13 @@ router.get('/logs/:userId/:date', requireAdminApi, async (req, res) => {
 
     const logContent = await fileLogService.readLogs(userId, date);
 
-    if (!logContent) {
+    if (!logContent || !logContent.lines || logContent.lines.length === 0) {
       return errorResponse(res, 'Log no encontrado', 404);
     }
 
     return successResponse(res, {
-      date,
-      lines: logContent.split('\n')
+      date: logContent.date,
+      lines: logContent.lines
     });
   } catch (error) {
     return errorResponse(res, 'Error al leer log', 500);
