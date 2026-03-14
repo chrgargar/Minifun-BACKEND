@@ -17,6 +17,15 @@ const sequelize = new Sequelize(
 );
 
 const User = require('./User')(sequelize);
+const GameProgress = require('./GameProgress')(sequelize);
+const UserPreferences = require('./UserPreferences')(sequelize);
+
+// Definir relaciones
+User.hasMany(GameProgress, { foreignKey: 'user_id', as: 'gameProgress' });
+GameProgress.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
+
+User.hasOne(UserPreferences, { foreignKey: 'user_id', as: 'preferences' });
+UserPreferences.belongsTo(User, { foreignKey: 'user_id', as: 'user' });
 
 // Función para sincronizar base de datos
 async function syncDatabase() {
@@ -45,5 +54,7 @@ async function syncDatabase() {
 module.exports = {
   sequelize,
   User,
+  GameProgress,
+  UserPreferences,
   syncDatabase
 };
